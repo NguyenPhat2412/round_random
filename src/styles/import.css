@@ -1,0 +1,110 @@
+.import-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.import-container h3 {
+  color: #1a202c;
+  margin-bottom: 15px;
+  font-size: 18px;
+}
+
+.import-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.import-label {
+  color: #4a5568;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.import-input {
+  padding: 10px;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #f7fafc;
+}
+
+.import-input:hover {
+  border-color: #667eea;
+  background-color: #edf2f7;
+}
+
+.import-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.import-message {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+
+.import-message.success {
+  background-color: #c6f6d5;
+  color: #22543d;
+  border: 1px solid #9ae6b4;
+}
+
+.import-message.error {
+  background-color: #fed7d7;
+  color: #742a2a;
+  border: 1px solid #fc8181;
+}
+
+.import-loading {
+  color: #667eea;
+  font-weight: 500;
+  text-align: center;
+  padding: 10px;
+}
+
+.import-guide {
+  background-color: #edf2f7;
+  border-left: 4px solid #667eea;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 15px;
+}
+
+.import-guide p {
+  margin: 0 0 10px 0;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.import-guide ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #4a5568;
+}
+
+.import-guide li {
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .import-container {
+    padding: 15px;
+  }
+
+  .import-container h3 {
+    font-size: 16px;
+  }
+
+  .import-guide {
+    padding: 12px;
+  }
+}

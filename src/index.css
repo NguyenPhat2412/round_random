@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    @apply min-h-screen bg-slate-50 text-slate-800 antialiased;
+    background-image:
+      radial-gradient(
+        circle at top left,
+        rgba(59, 130, 246, 0.04),
+        transparent 18%
+      ),
+      radial-gradient(
+        circle at bottom right,
+        rgba(168, 85, 247, 0.03),
+        transparent 14%
+      );
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .sidebar {
+    @apply h-full flex flex-col;
+  }
+
+  .tabs {
+    @apply flex border-b border-gray-200 bg-white;
+  }
+
+  .tab {
+    @apply flex-1 text-center px-4 py-3 cursor-pointer font-semibold text-slate-600 hover:bg-gray-50 transition;
+  }
+
+  .tab.active {
+    @apply text-blue-600 border-b-2 border-blue-600;
+  }
+
+  .badge {
+    @apply inline-block bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full ml-1;
+  }
+
+  .tab:not(.active) .badge {
+    @apply bg-slate-400;
+  }
+
+  .tab-content {
+    @apply flex flex-col overflow-y-auto bg-white;
+  }
+
+  .toolbar {
+    @apply flex flex-wrap gap-2 p-4 border-b border-gray-200;
+  }
+
+  .tool-btn {
+    @apply px-3 py-2 bg-white border border-gray-300 rounded text-sm text-slate-800 font-medium hover:bg-gray-50 transition;
+  }
+
+  .tool-btn.btn-danger {
+    @apply text-red-600 border-red-300 hover:bg-red-50;
+  }
+
+  .tool-btn.btn-reset {
+    @apply text-green-600 border-green-300 hover:bg-green-50;
+  }
+
+  .btn-update {
+    @apply w-full mt-3 px-4 py-3 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 transition;
+  }
+
+  .btn-update.btn-danger {
+    @apply bg-red-600 hover:bg-red-700;
+  }
+}
