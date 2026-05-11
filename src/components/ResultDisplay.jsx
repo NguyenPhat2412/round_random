@@ -1,61 +1,69 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Button,
-  Modal,
-  Pagination,
-  Spin,
-  Empty,
-  Space,
-  Row,
-  Col,
-  Statistic,
-} from "antd";
+import React, { useEffect, useRef, useState } from "react";
+import { Button, Modal, Pagination, Spin, Empty, Space } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import { resultAPI, itemAPI } from "../services/api";
 import useNotification from "../hooks/useNotification";
+import { triggerFireworks } from "../utils/confetti";
 
 const ResultDisplay = ({
   latestResult,
   refreshKey,
   onDataChanged,
-  activeTab,
-  resultKey,
-  acknowledgedResultKey,
-  onAcknowledgeResult,
+  showResultsList = true,
 }) => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [stats, setStats] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const hasPlayedAudioRef = useRef(false);
+  const hasTriggeredFireworksRef = useRef(false);
+  const shownResultKeyRef = useRef(null);
+  const fireworksTimerRef = useRef(null);
   const { notify, contextHolder } = useNotification();
+
+  const latestResultKey =
+    latestResult?.result?._id ||
+    latestResult?.result?.spinTime ||
+    latestResult?.item?._id ||
+    latestResult?.itemName ||
+    null;
 
   useEffect(() => {
     fetchResults();
-    fetchStats();
   }, [page, refreshKey]);
 
   useEffect(() => {
-    if (
-      activeTab === "results" ||
-      !resultKey ||
-      resultKey === acknowledgedResultKey
-    ) {
-      setShowModal(false);
+    if (!latestResultKey) return;
+    if (shownResultKeyRef.current === latestResultKey) return;
+
+    shownResultKeyRef.current = latestResultKey;
+    setShowModal(true);
+  }, [latestResultKey]);
+
+  useEffect(() => {
+    if (!showModal || !latestResult) {
+      hasTriggeredFireworksRef.current = false;
+      if (fireworksTimerRef.current) {
+        clearInterval(fireworksTimerRef.current);
+        fireworksTimerRef.current = null;
+      }
       return;
     }
 
-    setShowModal(true);
-  }, [activeTab, resultKey, acknowledgedResultKey]);
+    if (hasTriggeredFireworksRef.current) return;
 
-  const dismissModal = () => {
-    setShowModal(false);
-    if (resultKey) {
-      onAcknowledgeResult?.(resultKey);
-    }
-  };
+    fireworksTimerRef.current = triggerFireworks();
+    hasTriggeredFireworksRef.current = true;
+  }, [showModal, latestResult]);
+
+  useEffect(() => {
+    return () => {
+      if (fireworksTimerRef.current) {
+        clearInterval(fireworksTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!showModal) {
@@ -103,10 +111,13 @@ const ResultDisplay = ({
     }
   }, [showModal]);
 
-  const topStats = useMemo(() => {
-    if (!stats?.itemStats?.length) return [];
-    return stats.itemStats.slice(0, 3);
-  }, [stats]);
+  const dismissModal = () => {
+    if (fireworksTimerRef.current) {
+      clearInterval(fireworksTimerRef.current);
+      fireworksTimerRef.current = null;
+    }
+    setShowModal(false);
+  };
 
   const fetchResults = async () => {
     try {
@@ -123,17 +134,6 @@ const ResultDisplay = ({
     }
   };
 
-  const fetchStats = async () => {
-    try {
-      const response = await resultAPI.getStats();
-      if (response.data.success) {
-        setStats(response.data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-    }
-  };
-
   const handleClearAll = () => {
     Modal.confirm({
       title: "Xác nhận xóa",
@@ -146,9 +146,7 @@ const ResultDisplay = ({
           const response = await resultAPI.clearAllResults();
           if (response.data.success) {
             setResults([]);
-            setStats(null);
             setPage(1);
-            fetchStats();
             onDataChanged?.();
             notify({
               type: "success",
@@ -167,7 +165,6 @@ const ResultDisplay = ({
       const response = await resultAPI.deleteResult(id);
       if (response.data.success) {
         fetchResults();
-        fetchStats();
         onDataChanged?.();
         notify({ type: "success", message: "Xóa kết quả thành công" });
       }
@@ -183,16 +180,11 @@ const ResultDisplay = ({
       await itemAPI.deleteItem(id);
       dismissModal();
       fetchResults();
-      fetchStats();
       onDataChanged?.();
       notify({ type: "success", message: "Xóa mục thành công" });
     } catch (error) {
       notify({ type: "error", message: "Lỗi", description: error.message });
     }
-  };
-
-  const handleModalKeep = () => {
-    dismissModal();
   };
 
   return (
@@ -204,177 +196,123 @@ const ResultDisplay = ({
             <h3 className="font-semibold text-slate-800">
               Những lượt quay trước
             </h3>
-            <p className="text-xs text-slate-600 mt-1">
-              Tổng: {stats?.totalSpins || 0} lượt
-            </p>
           </div>
         </div>
 
-        {/* Modal for spin result */}
         <Modal
           title={
-            <div className="text-center font-bold text-xl">
-              🎉 Chúc mừng bạn nhỏ đã quay trúng
+            <div className="text-center font-bold text-xl text-emerald-600">
+              🎉 Xin chúc mừng bạn nhỏ may mắn nhất lớp mình hôm nay
             </div>
           }
           open={showModal && !!latestResult}
-          onCancel={handleModalKeep}
+          onCancel={dismissModal}
           footer={null}
           centered
+          className="result-pop-modal"
+          maskStyle={{ backgroundColor: "rgba(15, 23, 42, 0.45)" }}
         >
           <style>{`
-            @keyframes confetti-fall { 
-              0% {transform: translateY(-10vh) rotate(0)} 
-              100% {transform: translateY(60vh) rotate(360deg)} 
+            @keyframes popIn {
+              0% { transform: scale(0.7); opacity: 0; }
+              60% { transform: scale(1.03); opacity: 1; }
+              100% { transform: scale(1); opacity: 1; }
             }
-            .confetti { 
-              position:absolute; 
-              width:10px; 
-              height:14px; 
-              opacity:0.9; 
-              animation: confetti-fall 1.8s linear infinite; 
+            .result-pop-modal .ant-modal-content {
+              animation: popIn 0.35s ease-out;
+              box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+              border: 2px solid rgba(16, 185, 129, 0.12);
             }
           `}</style>
-          {/* Confetti elements */}
-          {Array.from({ length: 18 }).map((_, i) => (
-            <div
-              key={i}
-              className="confetti"
-              style={{
-                left: `${(i / 18) * 100}%`,
-                background: [
-                  "#F97316",
-                  "#10B981",
-                  "#60A5FA",
-                  "#F472B6",
-                  "#FDE68A",
-                ][i % 5],
-                animationDelay: `${(i % 6) * 0.08}s`,
-              }}
-            />
-          ))}
 
           <div className="mb-4 text-center">
-            <div className="text-base text-slate-600">
-              Bạn may mắn:{" "}
-              <span className="font-semibold text-slate-800">
+            <div className="text-lg text-slate-700 font-medium">
+              <span className="font-bold text-emerald-700">
                 {latestResult?.item?.name || latestResult?.itemName}
               </span>
             </div>
           </div>
 
-          <Space className="w-full flex justify-center gap-2">
+          <Space className="w-full flex justify-center gap-3">
             <Button danger onClick={handleModalDelete} type="primary">
               Xóa
             </Button>
-            <Button onClick={() => setShowModal(false)}>Không Xóa</Button>
+            <Button
+              onClick={dismissModal}
+              className="animate-pulse font-bold bg-emerald-500 text-white border-emerald-500 hover:!bg-emerald-600 hover:!text-white"
+            >
+              ✅ Tiếp tục
+            </Button>
           </Space>
         </Modal>
 
-        {/* Stats */}
-        {stats && (
-          <Row gutter={[16, 16]} className="mb-4">
-            <Col xs={24} sm={12} lg={6}>
-              <div className="p-3 bg-gray-50 rounded-lg text-center border border-gray-200">
-                <Statistic value={stats.totalSpins} />
-                <div className="text-xs uppercase tracking-wider text-slate-500 mt-1">
-                  Số lượt quay
-                </div>
-              </div>
-            </Col>
-            {topStats.map((item) => (
-              <Col
-                key={`${item.itemId || item._id || item.itemName}`}
-                xs={24}
-                sm={12}
-                lg={6}
-              >
-                <div className="p-3 bg-gray-50 rounded-lg text-center border border-gray-200">
-                  <Statistic value={item.count} />
-                  <div className="text-xs uppercase tracking-wider text-slate-500 mt-1">
-                    {item.itemName || item._id}
-                  </div>
-                </div>
-              </Col>
-            ))}
-          </Row>
-        )}
+        {showResultsList && (
+          <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-purple-50">
+            <div className="mb-4 flex items-center justify-between">
+              <h4 className="font-semibold text-slate-800 text-lg">
+                📋 Danh sách quay trúng
+              </h4>
+              {results.length > 0 && (
+                <Button danger size="small" onClick={handleClearAll}>
+                  Xóa hết
+                </Button>
+              )}
+            </div>
 
-        {/* Results List */}
-        <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-          <div className="mb-3 flex items-center justify-between">
-            <h4 className="font-semibold text-slate-800">
-              Danh sách lượt quay
-            </h4>
-            {results.length > 0 && (
-              <Button danger size="small" onClick={handleClearAll}>
-                Xóa hết
-              </Button>
+            {loading ? (
+              <Spin description="Đang tải..." className="w-full py-8" />
+            ) : results.length > 0 ? (
+              <>
+                <div className="space-y-2">
+                  {results.map((result, idx) => (
+                    <div
+                      key={result._id}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-white p-3 shadow-sm hover:shadow-md transition-shadow border-l-4"
+                      style={{
+                        borderLeftColor: result.details?.color || "#0ea5e9",
+                      }}
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <span className="px-3 py-1 text-sm font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full min-w-12 text-center">
+                          #{(page - 1) * 10 + idx + 1}
+                        </span>
+                        <div className="flex-1">
+                          <div className="font-semibold text-slate-800 text-base">
+                            {result.itemName}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        danger
+                        type="text"
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleDeleteResult(result._id)}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="mt-4 flex justify-center">
+                    <Pagination
+                      current={page}
+                      total={totalPages * 10}
+                      pageSize={10}
+                      onChange={setPage}
+                      size="small"
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <Empty description="Chưa có lượt quay nào" className="py-8" />
             )}
           </div>
-
-          {loading ? (
-            <Spin description="Đang tải..." className="w-full py-8" />
-          ) : results.length > 0 ? (
-            <>
-              <div className="space-y-2">
-                {results.map((result, idx) => (
-                  <div
-                    key={result._id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="px-2 py-1 text-xs font-semibold bg-cyan-50 text-cyan-700 rounded">
-                        #{(page - 1) * 10 + idx + 1}
-                      </span>
-                      <div
-                        className="w-10 h-10 rounded flex items-center justify-center text-white font-bold"
-                        style={{
-                          backgroundColor: result.details?.color || "#0ea5e9",
-                        }}
-                      >
-                        {result.details?.icon || ""}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-slate-800 text-sm">
-                          {result.itemName}
-                        </div>
-                        <div className="text-xs text-slate-600">
-                          {new Date(result.createdAt).toLocaleString("vi-VN")}
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      danger
-                      type="text"
-                      size="small"
-                      icon={<DeleteOutlined />}
-                      onClick={() => handleDeleteResult(result._id)}
-                    >
-                      Bỏ
-                    </Button>
-                  </div>
-                ))}
-              </div>
-
-              {totalPages > 1 && (
-                <div className="mt-4 flex justify-center">
-                  <Pagination
-                    current={page}
-                    total={totalPages * 10}
-                    pageSize={10}
-                    onChange={setPage}
-                    size="small"
-                  />
-                </div>
-              )}
-            </>
-          ) : (
-            <Empty description="Chưa có lượt quay nào" className="py-4" />
-          )}
-        </div>
+        )}
       </div>
     </>
   );
 };
+
 export default ResultDisplay;

@@ -15,13 +15,24 @@ const Sidebar = ({
   onDataChanged,
 }) => {
   const [activeTab, setActiveTab] = useState("items");
-  const [acknowledgedResultKey, setAcknowledgedResultKey] = useState(null);
-  const [textValue, setTextValue] = useState(() =>
-    items.map((i) => i.name).join("\n"),
-  );
-  const [initialSnapshot] = useState(
-    () => originalItems?.map((i) => i.name) ?? items.map((i) => i.name),
-  );
+
+  // Load last manual list from localStorage, fallback to current items
+  const [textValue, setTextValue] = useState(() => {
+    const saved = localStorage.getItem("lastManualList");
+    if (saved) return saved;
+    return items.map((i) => i.name).join("\n");
+  });
+
+  // initialSnapshot = last saved manual list (for reset functionality)
+  const [initialSnapshot] = useState(() => {
+    const saved = localStorage.getItem("lastManualList");
+    if (saved)
+      return saved
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    return originalItems?.map((i) => i.name) ?? items.map((i) => i.name);
+  });
 
   const latestResultKey =
     latestResult?.result?._id ||
@@ -29,12 +40,6 @@ const Sidebar = ({
     latestResult?.item?._id ||
     latestResult?.itemName ||
     null;
-
-  React.useEffect(() => {
-    if (activeTab === "results" && latestResultKey) {
-      setAcknowledgedResultKey(latestResultKey);
-    }
-  }, [activeTab, latestResultKey]);
 
   // keep textarea in sync when items prop changes
   React.useEffect(() => {
@@ -53,6 +58,9 @@ const Sidebar = ({
   const { notify, contextHolder } = useNotification();
 
   const handleUpdate = () => {
+    // Save manual list to localStorage as "last manual list"
+    localStorage.setItem("lastManualList", textValue);
+
     // Build lightweight item objects for wheel (not persisting to backend here)
     const colors = generateDistinctColors(items, names.length);
     const newItems = names.map((name, idx) => ({
@@ -98,9 +106,16 @@ const Sidebar = ({
   };
 
   const resetList = () => {
-    if (!initialSnapshot || initialSnapshot.length === 0) return;
-    setTextValue(initialSnapshot.join("\n"));
-    notify({ type: "open", message: "Đã khôi phục danh sách gốc" });
+    if (
+      !initialSnapshot ||
+      (Array.isArray(initialSnapshot) && initialSnapshot.length === 0)
+    )
+      return;
+    const snapText = Array.isArray(initialSnapshot)
+      ? initialSnapshot.join("\n")
+      : initialSnapshot;
+    setTextValue(snapText);
+    notify({ type: "open", message: "Đã khôi phục danh sách cuối cùng" });
   };
 
   return (
@@ -121,6 +136,13 @@ const Sidebar = ({
       </div>
 
       {contextHolder}
+      <ResultDisplay
+        latestResult={latestResult}
+        refreshKey={refreshKey}
+        onDataChanged={onDataChanged}
+        showResultsList={activeTab === "results"}
+      />
+
       {activeTab === "items" ? (
         <div className="tab-content">
           <div className="toolbar">
@@ -157,15 +179,6 @@ const Sidebar = ({
         </div>
       ) : (
         <div className="tab-content px-4">
-          <ResultDisplay
-            latestResult={latestResult}
-            refreshKey={refreshKey}
-            onDataChanged={onDataChanged}
-            activeTab={activeTab}
-            resultKey={latestResultKey}
-            acknowledgedResultKey={acknowledgedResultKey}
-            onAcknowledgeResult={setAcknowledgedResultKey}
-          />
           <div className="py-2">
             <Button
               danger
