@@ -226,7 +226,7 @@ const Wheel = ({
       gainNode.connect(audioContext.destination);
 
       // Lower frequency (400Hz) for softer, smoother sound
-      oscillator.frequency.value = 400;
+      oscillator.frequency.value = 200;
       oscillator.type = "sine";
 
       // Softer volume with smooth fade-in and fade-out
