@@ -139,19 +139,19 @@ const Wheel = ({ items, isSpinning, onSpinStateChange, onSpinComplete }) => {
   return (
     <>
       {contextHolder}
-      <div className="flex flex-col items-center gap-6">
-        <div className="relative flex h-[340px] w-[340px] items-center justify-center">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-3 py-4 sm:px-6">
+        <div className="relative flex aspect-square w-full max-w-[560px] items-center justify-center">
           <div className="pointer-events-none absolute left-1/2 top-0 z-20 -translate-x-1/2">
             <div className="h-0 w-0 border-l-[16px] border-r-[16px] border-t-[28px] border-l-transparent border-r-transparent border-t-rose-400 drop-shadow-[0_6px_12px_rgba(244,63,94,0.45)]" />
           </div>
           <div
             ref={wheelRef}
-            className="relative rounded-full border border-gray-200 bg-white p-3 shadow-sm"
+            className="relative h-full w-full rounded-full border border-gray-200 bg-white p-3 shadow-sm"
           >
             <canvas
               ref={canvasRef}
-              width={320}
-              height={320}
+              width={520}
+              height={520}
               className="block rounded-full"
             />
             <div className="pointer-events-none absolute inset-0 rounded-full ring-4 ring-gray-100" />
@@ -166,7 +166,7 @@ const Wheel = ({ items, isSpinning, onSpinStateChange, onSpinComplete }) => {
           loading={isSpinning || localLoading}
           className="!h-12 !px-8 !text-base !font-bold !uppercase"
         >
-          {isSpinning || localLoading ? "Đang quay..." : "Bấm để quay"}
+          {isSpinning || localLoading ? "Đang quay..." : "Bấm để bắt đầu"}
         </Button>
       </div>
     </>

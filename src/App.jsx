@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Spin } from "antd";
 import Wheel from "./components/Wheel";
 import Sidebar from "./components/Sidebar";
-import ItemManager from "./components/ItemManager";
 import useNotification from "./hooks/useNotification";
 import { itemAPI } from "./services/api";
 
@@ -57,38 +56,6 @@ function App() {
     triggerRefresh();
   };
 
-  const handleQuickAdd = async (event) => {
-    event.preventDefault();
-    if (!quickAdd.name.trim()) {
-      notify({
-        type: "warning",
-        message: "Nhập liệu không hợp lệ",
-        description: "Vui lòng nhập họ tên hoặc tên dữ liệu.",
-      });
-      return;
-    }
-
-    try {
-      const response = await itemAPI.addItem(quickAdd);
-      if (response.data.success) {
-        setItems((current) => [...current, response.data.data]);
-        setQuickAdd({ name: "" });
-        notify({
-          type: "success",
-          message: "Thêm thành công",
-          description: `Đã thêm "${quickAdd.name}" vào danh sách.`,
-        });
-        triggerRefresh();
-      }
-    } catch (err) {
-      notify({
-        type: "error",
-        message: "Lỗi",
-        description: err.response?.data?.message || err.message,
-      });
-    }
-  };
-
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-50 text-slate-800 overflow-hidden">
       {contextHolder}
@@ -112,76 +79,29 @@ function App() {
               />
             </div>
 
-            {/* Right Content - Wheel + Manager */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Header */}
-              <div className="border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
-                <div className="flex items-center justify-between">
+            {/* Right Content - Full Wheel */}
+            <div className="flex-1 overflow-hidden bg-gradient-to-br from-cyan-50 via-white to-amber-50 p-3 sm:p-5">
+              {items.length > 0 ? (
+                <div className="flex h-full items-center justify-center rounded-3xl border border-white/70 bg-white/60 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+                  <Wheel
+                    items={items}
+                    isSpinning={isSpinning}
+                    onSpinStateChange={setIsSpinning}
+                    onSpinComplete={handleSpinComplete}
+                  />
+                </div>
+              ) : (
+                <div className="flex h-full items-center justify-center rounded-3xl border-2 border-dashed border-cyan-200 bg-white/70 p-8 text-center shadow-sm">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-700">
-                      Lucky Wheel
+                    <p className="text-xl font-bold text-cyan-900">
+                      Chưa có tên nào để quay
                     </p>
-                    <h1 className="mt-1 text-2xl font-black text-slate-900">
-                      Vòng quay may mắn
-                    </h1>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-slate-800">
-                      {items.length}
-                    </div>
-                    <div className="text-xs uppercase tracking-[0.15em] text-slate-500">
-                      Mục
-                    </div>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Nhập danh sách bạn nhỏ ở bên trái rồi bắt đầu nhé.
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              {/* Main Content */}
-              <div className="flex-1 overflow-y-auto p-6">
-                {items.length > 0 ? (
-                  <div className="space-y-6">
-                    {/* Wheel */}
-                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                      <div className="mb-4">
-                        <h2 className="text-lg font-semibold text-slate-800">
-                          Bảng quay
-                        </h2>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Mũi tên ở trên cùng đứng yên
-                        </p>
-                      </div>
-                      <Wheel
-                        items={items}
-                        isSpinning={isSpinning}
-                        onSpinStateChange={setIsSpinning}
-                        onSpinComplete={handleSpinComplete}
-                      />
-                    </div>
-
-                    {/* Item Manager */}
-                    <div>
-                      <ItemManager
-                        items={items}
-                        onItemsChange={(nextItems) => {
-                          setItems(nextItems);
-                          triggerRefresh();
-                        }}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-full rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50">
-                    <div className="text-center">
-                      <p className="text-lg font-semibold text-slate-800">
-                        Chưa có dữ liệu để quay
-                      </p>
-                      <p className="text-sm text-slate-600 mt-2">
-                        Hãy nhập Excel hoặc thêm thủ công ở bên trái.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </>
         )}

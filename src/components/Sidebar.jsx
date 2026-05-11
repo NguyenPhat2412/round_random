@@ -31,8 +31,10 @@ const Sidebar = ({
     null;
 
   React.useEffect(() => {
-    setAcknowledgedResultKey(null);
-  }, [latestResultKey]);
+    if (activeTab === "results" && latestResultKey) {
+      setAcknowledgedResultKey(latestResultKey);
+    }
+  }, [activeTab, latestResultKey]);
 
   // keep textarea in sync when items prop changes
   React.useEffect(() => {
@@ -108,13 +110,13 @@ const Sidebar = ({
           className={`tab ${activeTab === "items" ? "active" : ""}`}
           onClick={() => setActiveTab("items")}
         >
-          Mục <span className="badge">{items.length}</span>
+          Danh sách <span className="badge">{items.length}</span>
         </div>
         <div
           className={`tab ${activeTab === "results" ? "active" : ""}`}
           onClick={() => setActiveTab("results")}
         >
-          Kết quả <span className="badge"></span>
+          Kết quả vui <span className="badge"></span>
         </div>
       </div>
 
@@ -124,11 +126,11 @@ const Sidebar = ({
           <div className="toolbar">
             <Space wrap>
               <Button onClick={shuffleList}>🔀 Trộn</Button>
-              <Button onClick={sortAZ}>⬇️ AZ</Button>
+              <Button onClick={sortAZ}>🔤 A đến Z</Button>
               <Button danger onClick={clearList}>
-                ✖ Xoá
+                ✖ Xóa hết
               </Button>
-              <Button onClick={resetList}>🔄 Reset</Button>
+              <Button onClick={resetList}>🔄 Danh sách gốc</Button>
             </Space>
           </div>
 
@@ -141,9 +143,7 @@ const Sidebar = ({
               id="nameList"
               value={textValue}
               onChange={(e) => setTextValue(e.target.value)}
-              placeholder={
-                "Nhập tên người tham gia tại đây...\nMỗi người 1 dòng."
-              }
+              placeholder={"Nhập tên từng bạn ở đây...\nMỗi dòng là 1 bạn."}
               rows={8}
               className="h-full"
             />
@@ -151,7 +151,7 @@ const Sidebar = ({
 
           <div className="px-4 py-2">
             <Button type="primary" block onClick={handleUpdate}>
-              Cập nhật vòng quay
+              Cập nhật danh sách
             </Button>
           </div>
         </div>
@@ -161,6 +161,7 @@ const Sidebar = ({
             latestResult={latestResult}
             refreshKey={refreshKey}
             onDataChanged={onDataChanged}
+            activeTab={activeTab}
             resultKey={latestResultKey}
             acknowledgedResultKey={acknowledgedResultKey}
             onAcknowledgeResult={setAcknowledgedResultKey}
@@ -171,9 +172,9 @@ const Sidebar = ({
               block
               onClick={() =>
                 Modal.confirm({
-                  title: "Xóa lịch sử kết quả",
-                  content: "Bạn có chắc muốn xóa toàn bộ lịch sử kết quả?",
-                  okText: "Xóa",
+                  title: "Xóa hết kết quả",
+                  content: "Bạn có muốn xóa sạch các lượt quay không?",
+                  okText: "Xóa hết",
                   okType: "danger",
                   cancelText: "Hủy",
                   onOk() {
@@ -182,7 +183,7 @@ const Sidebar = ({
                 })
               }
             >
-              Xóa lịch sử kết quả
+              Xóa lịch sử quay
             </Button>
           </div>
         </div>

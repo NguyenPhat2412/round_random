@@ -54,9 +54,9 @@ const ImportExcel = ({ onImportSuccess }) => {
     <>
       {contextHolder}
       <div className="rounded-lg border border-gray-300 bg-white p-4">
-        <h3 className="font-semibold text-slate-800 mb-2">Nhập Excel</h3>
+        <h3 className="font-semibold text-slate-800 mb-2">Nhập danh sách</h3>
         <p className="text-xs text-slate-600 mb-3">
-          Tải file .xls hoặc .xlsx chứa danh sách tên.
+          Tải file Excel có danh sách các bạn, mỗi dòng là một tên.
         </p>
         <Upload
           maxCount={1}
@@ -68,7 +68,7 @@ const ImportExcel = ({ onImportSuccess }) => {
           disabled={loading}
         >
           <Button icon={<UploadOutlined />} block loading={loading}>
-            {loading ? "Đang xử lý..." : "Chọn file Excel"}
+            {loading ? "Đang xử lý..." : "Chọn file"}
           </Button>
         </Upload>
       </div>

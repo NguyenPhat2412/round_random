@@ -18,6 +18,7 @@ const ResultDisplay = ({
   latestResult,
   refreshKey,
   onDataChanged,
+  activeTab,
   resultKey,
   acknowledgedResultKey,
   onAcknowledgeResult,
@@ -37,13 +38,17 @@ const ResultDisplay = ({
   }, [page, refreshKey]);
 
   useEffect(() => {
-    if (!resultKey || resultKey === acknowledgedResultKey) {
+    if (
+      activeTab === "results" ||
+      !resultKey ||
+      resultKey === acknowledgedResultKey
+    ) {
       setShowModal(false);
       return;
     }
 
     setShowModal(true);
-  }, [resultKey, acknowledgedResultKey]);
+  }, [activeTab, resultKey, acknowledgedResultKey]);
 
   const dismissModal = () => {
     setShowModal(false);
@@ -196,47 +201,20 @@ const ResultDisplay = ({
       <div className="rounded-xl border border-gray-300 bg-white p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-slate-800">Lịch sử quay</h3>
+            <h3 className="font-semibold text-slate-800">
+              Những lượt quay trước
+            </h3>
             <p className="text-xs text-slate-600 mt-1">
-              Tổng: {stats?.totalSpins || 0} lượt quay
+              Tổng: {stats?.totalSpins || 0} lượt
             </p>
           </div>
         </div>
-
-        {latestResult && (
-          <div className="mb-4 p-3 rounded-lg border border-cyan-200 bg-cyan-50">
-            <div className="text-xs font-semibold uppercase text-cyan-700 mb-2">
-              Kết quả gần nhất
-            </div>
-            <div className="flex items-center gap-3 bg-white p-3 rounded-lg">
-              <div
-                className="w-10 h-10 rounded flex items-center justify-center text-white font-bold text-sm"
-                style={{
-                  backgroundColor:
-                    latestResult.item?.color ||
-                    latestResult.details?.color ||
-                    "#0ea5e9",
-                }}
-              >
-                {latestResult.item?.icon || latestResult.details?.icon || "🎁"}
-              </div>
-              <div>
-                <div className="font-semibold text-slate-800">
-                  {latestResult.item?.name || latestResult.itemName}
-                </div>
-                <div className="text-xs text-slate-600">
-                  {latestResult.item?.description || "Đã lưu vào danh sách"}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Modal for spin result */}
         <Modal
           title={
             <div className="text-center font-bold text-xl">
-              🎉 Xin chúc mừng!
+              🎉 Chúc mừng bạn nhỏ đã quay trúng
             </div>
           }
           open={showModal && !!latestResult}
@@ -278,7 +256,7 @@ const ResultDisplay = ({
 
           <div className="mb-4 text-center">
             <div className="text-base text-slate-600">
-              Kết quả:{" "}
+              Bạn may mắn:{" "}
               <span className="font-semibold text-slate-800">
                 {latestResult?.item?.name || latestResult?.itemName}
               </span>
@@ -300,7 +278,7 @@ const ResultDisplay = ({
               <div className="p-3 bg-gray-50 rounded-lg text-center border border-gray-200">
                 <Statistic value={stats.totalSpins} />
                 <div className="text-xs uppercase tracking-wider text-slate-500 mt-1">
-                  Tổng lần quay
+                  Số lượt quay
                 </div>
               </div>
             </Col>
@@ -325,16 +303,18 @@ const ResultDisplay = ({
         {/* Results List */}
         <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
           <div className="mb-3 flex items-center justify-between">
-            <h4 className="font-semibold text-slate-800">Danh sách quay</h4>
+            <h4 className="font-semibold text-slate-800">
+              Danh sách lượt quay
+            </h4>
             {results.length > 0 && (
               <Button danger size="small" onClick={handleClearAll}>
-                Xóa tất cả
+                Xóa hết
               </Button>
             )}
           </div>
 
           {loading ? (
-            <Spin tip="Đang tải..." className="w-full py-8" />
+            <Spin description="Đang tải..." className="w-full py-8" />
           ) : results.length > 0 ? (
             <>
               <div className="space-y-2">
@@ -371,7 +351,7 @@ const ResultDisplay = ({
                       icon={<DeleteOutlined />}
                       onClick={() => handleDeleteResult(result._id)}
                     >
-                      Xóa
+                      Bỏ
                     </Button>
                   </div>
                 ))}
@@ -390,7 +370,7 @@ const ResultDisplay = ({
               )}
             </>
           ) : (
-            <Empty description="Chưa có kết quả quay nào" className="py-4" />
+            <Empty description="Chưa có lượt quay nào" className="py-4" />
           )}
         </div>
       </div>
