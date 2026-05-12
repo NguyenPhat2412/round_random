@@ -5,13 +5,13 @@ import { generateDistinctColors } from "../utils/colorUtils";
 import { Button, Modal, Input, Space } from "antd";
 import useNotification from "../hooks/useNotification";
 import { ColorContext } from "../contexts/ColorContext";
+import { itemAPI } from "../services/api";
 
 const Sidebar = ({
   items,
   onImportSuccess,
   onManualUpdate,
   onItemDeleted,
-  originalItems,
   latestResult,
   refreshKey,
   onDataChanged,
@@ -46,7 +46,7 @@ const Sidebar = ({
         .split("\n")
         .map((s) => s.trim())
         .filter(Boolean);
-    return originalItems?.map((i) => i.name) ?? items.map((i) => i.name);
+    return items.map((i) => i.name);
   });
 
   const latestResultKey =
@@ -77,40 +77,71 @@ const Sidebar = ({
     // Save manual list to localStorage as "last manual list"
     localStorage.setItem("lastManualList", textValue);
 
-    // Build lightweight item objects for wheel (not persisting to backend here)
     const colors = generateDistinctColors(items, names.length);
-    const newItems = names.map((name, idx) => ({
-      _id: `local-${idx}-${name.replace(/\s+/g, "")}`,
-      name,
-      color: colors[idx],
-      icon: "🎁",
-      isActive: true,
-    }));
 
     // Find items to deactivate (in current items but not in new list)
-    const newNames = new Set(names.map((n) => n.toLowerCase().trim()));
+    const newNamesSet = new Set(names.map((n) => n.toLowerCase().trim()));
     const itemsToDeactivate = items.filter(
-      (item) => !newNames.has(item.name?.toLowerCase().trim()),
+      (item) => !newNamesSet.has(item.name?.toLowerCase().trim()),
     );
 
-    // Deactivate items that are no longer in the list
-    if (itemsToDeactivate.length > 0) {
-      try {
-        const { itemAPI } = await import("../services/api");
+    try {
+      // Deactivate items that are no longer in the list
+      if (itemsToDeactivate.length > 0) {
         await itemAPI.deactivateItems(
           itemsToDeactivate.map((item) => item._id),
         );
-      } catch (err) {
-        console.error("Error deactivating items:", err);
       }
-    }
 
-    onManualUpdate(newItems);
-    notify({
-      type: "success",
-      message: "Cập nhật vòng quay",
-      description: `Đã cập nhật ${newItems.length} mục.`,
-    });
+      // Create any new items that don't exist on the backend
+      const existingNamesSet = new Set(
+        items.map((i) => i.name?.toLowerCase().trim()),
+      );
+      const createPromises = [];
+      names.forEach((name, idx) => {
+        const normalized = name.toLowerCase().trim();
+        if (!existingNamesSet.has(normalized)) {
+          createPromises.push(
+            itemAPI.addItem({
+              name,
+              color: colors[idx],
+              icon: "🎁",
+            }),
+          );
+        }
+      });
+
+      if (createPromises.length > 0) {
+        await Promise.all(createPromises);
+      }
+
+      // Fetch fresh list from backend and pass to parent
+      const resp = await itemAPI.getAllItems();
+      const serverItems = resp.data.success ? resp.data.data : [];
+
+      onManualUpdate(
+        serverItems.map((i) => ({
+          _id: i._id,
+          name: i.name,
+          color: i.color,
+          icon: i.icon || "🎁",
+          isActive: i.isActive !== false,
+        })),
+      );
+
+      notify({
+        type: "success",
+        message: "Cập nhật vòng quay",
+        description: `Đã lưu ${names.length} mục trên server.`,
+      });
+    } catch (err) {
+      console.error("Error updating manual list:", err);
+      notify({
+        type: "error",
+        message: "Lỗi cập nhật",
+        description: err.message,
+      });
+    }
   };
 
   const handleOpenSavedLists = () => {
@@ -156,8 +187,8 @@ const Sidebar = ({
     const existing = savedLists.some((list) => list.name === name);
     const updatedLists = existing
       ? savedLists.map((list) =>
-        list.name === name ? { ...list, items: listItems } : list,
-      )
+          list.name === name ? { ...list, items: listItems } : list,
+        )
       : [...savedLists, { name, items: listItems }];
 
     localStorage.setItem("savedLists", JSON.stringify(updatedLists));
@@ -236,7 +267,6 @@ const Sidebar = ({
   };
 
   return (
-
     <div className="sidebar">
       {contextHolder}
       <div className="tabs">
@@ -253,7 +283,6 @@ const Sidebar = ({
           Kết quả <span className="badge">{resultsCount}</span>
         </div>
       </div>
-
 
       {showResultDisplay && (
         <ResultDisplay
@@ -306,7 +335,10 @@ const Sidebar = ({
                       >
                         <span>{list.name}</span>
                         <Space>
-                          <Button size="small" onClick={() => handleUseSavedList(list)}>
+                          <Button
+                            size="small"
+                            onClick={() => handleUseSavedList(list)}
+                          >
                             Mở
                           </Button>
                           <Button
@@ -367,7 +399,11 @@ const Sidebar = ({
               type="primary"
               block
               onClick={handleUpdate}
-              style={{ fontWeight: 700, fontSize: "1.05rem", padding: "0.9rem 1rem" }}
+              style={{
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                padding: "0.9rem 1rem",
+              }}
             >
               Cập nhật vòng quay
             </Button>

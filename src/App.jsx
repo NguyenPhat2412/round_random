@@ -14,7 +14,6 @@ function App() {
   const [latestResult, setLatestResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [originalItems, setOriginalItems] = useState([]);
   const [quickAdd, setQuickAdd] = useState({ name: "" });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const previousFullscreenRef = useRef(false);
@@ -93,7 +92,6 @@ function App() {
       const response = await itemAPI.getAllItems();
       if (response.data.success) {
         setItems(response.data.data);
-        setOriginalItems(response.data.data);
       }
     } catch (err) {
       notify({
@@ -126,9 +124,6 @@ function App() {
 
   const handleItemDeleted = (deletedId) => {
     setItems((current) => current.filter((item) => item._id !== deletedId));
-    setOriginalItems((current) =>
-      current.filter((item) => item._id !== deletedId),
-    );
     setLatestResult((current) => {
       if (!current) return current;
       const currentItemId = current?.item?._id || current?.result?.itemId;
@@ -225,7 +220,6 @@ function App() {
                   <div className="w-full border-r border-gray-200 bg-white overflow-y-auto shadow-md">
                     <Sidebar
                       items={items}
-                      originalItems={originalItems}
                       onImportSuccess={handleImportSuccess}
                       onManualUpdate={handleManualUpdate}
                       onItemDeleted={handleItemDeleted}
@@ -260,13 +254,38 @@ function App() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-full rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50">
-                      <div className="text-center">
-                        <p className="text-lg font-semibold text-slate-800">
+                    <div className="flex items-center justify-center h-full w-full">
+                      <div className="w-full max-w-lg mx-4 sm:mx-6 md:mx-0 bg-white rounded-2xl border-2 border-dashed border-gray-200 p-6 sm:p-8 flex flex-col items-center text-center shadow-sm">
+                        <div className="flex items-center justify-center h-20 w-20 rounded-full bg-emerald-50 mb-4">
+                          <span className="text-4xl">🎯</span>
+                        </div>
+                        <p className="text-lg sm:text-xl font-semibold text-slate-800">
                           Chưa có dữ liệu để quay
                         </p>
                         <p className="text-sm text-slate-600 mt-2">
-                          Hãy nhập Excel hoặc thêm thủ công ở bên trái.
+                          Nhập file Excel hoặc thêm thủ công ở bên trái để bắt
+                          đầu.
+                        </p>
+
+                        <div className="mt-4 w-full sm:w-auto flex flex-col sm:flex-row gap-3 justify-center">
+                          <button
+                            type="button"
+                            onClick={() => {}}
+                            className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
+                          >
+                            Thêm thủ công
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {}}
+                            className="px-4 py-2 rounded-md border border-gray-300 text-sm text-slate-700 bg-white hover:bg-gray-50 transition"
+                          >
+                            Nhập file
+                          </button>
+                        </div>
+
+                        <p className="text-xs text-slate-400 mt-4">
+                          Giao diện tương thích: mobile / iPad / desktop
                         </p>
                       </div>
                     </div>
