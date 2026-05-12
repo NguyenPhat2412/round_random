@@ -11,9 +11,10 @@ import { itemAPI } from "../services/api";
 import useNotification from "../hooks/useNotification";
 import { pickReadableTextColor } from "../utils/colorUtils";
 import ConstellationBackground from "./ConstellationBackground";
+import spinAudio from "../../audio/audio.mp3";
 
 const FULL_ROTATIONS = 12;
-const SPIN_DURATION = 9000; //
+const SPIN_DURATION = 15000; // 15 giây
 const AUTO_SPIN_SPEED = 0.0015; // Tốc độ quay tự động
 
 // Fixed vibrant colors
@@ -42,6 +43,7 @@ const Wheel = ({
   onSpinStateChange,
   onSpinComplete,
   size = 540,
+  isFullscreen = false,
 }) => {
   const { setPointerColor } = useContext(ColorContext);
   const containerRef = useRef(null);
@@ -50,7 +52,7 @@ const Wheel = ({
   const [localSpinning, setLocalSpinning] = useState(false);
   const [currentRotation, setCurrentRotation] = useState(0);
   const lastSegmentRef = useRef(-1);
-  const audioContextRef = useRef(null);
+  const audioRef = useRef(null);
   const { notify, contextHolder } = useNotification();
 
   const sliceAngle = useMemo(() => {
@@ -80,7 +82,7 @@ const Wheel = ({
   useEffect(() => {
     try {
       setPointerColor?.(currentPointerColor);
-    } catch (e) {}
+    } catch (e) { }
   }, [currentPointerColor, setPointerColor]);
 
   // Remove old particles useMemo - using ConstellationBackground component instead
@@ -186,18 +188,13 @@ const Wheel = ({
       ctx.restore();
     }
 
-    // Track segment for tick sound
+    // Track current segment for rotation logic
     let currentSegment = Math.floor(
       (((3 * Math.PI) / 2 - currentRotation) / arc) % items.length,
     );
     if (currentSegment < 0) currentSegment += items.length;
 
-    if (
-      currentSegment !== lastSegmentRef.current &&
-      localSpinning &&
-      items.length > 0
-    ) {
-      playTickSound();
+    if (currentSegment !== lastSegmentRef.current && localSpinning && items.length > 0) {
       lastSegmentRef.current = currentSegment;
     }
   }, [items, sectorColors, currentRotation, localSpinning, pixelSize]);
@@ -224,7 +221,7 @@ const Wheel = ({
     return () => {
       try {
         ro.disconnect();
-      } catch (e) {}
+      } catch (e) { }
     };
   }, [drawWheel, size]);
 
@@ -251,52 +248,34 @@ const Wheel = ({
     };
   }, [localSpinning, items.length]);
 
-  // Initialize audio context on first use
-  const getAudioContext = useCallback(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (
-        window.AudioContext || window.webkitAudioContext
-      )();
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(spinAudio);
+      audioRef.current.preload = "auto";
+      audioRef.current.volume = 0.25;
     }
-    return audioContextRef.current;
   }, []);
 
-  // Play tick sound during spin - three sharp "tinh tinh tinh" sounds
-  const playTickSound = useCallback(() => {
+  const playSpinAudio = useCallback(() => {
     try {
-      const audioContext = getAudioContext();
-      const now = audioContext.currentTime;
-      const soundDuration = 0.08; // Duration of each "tinh" sound
-      const gap = 0.06; // Gap between sounds
-
-      // Create 3 sharp "tinh" sounds
-      for (let i = 0; i < 3; i++) {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        // High frequency for sharp sound
-        oscillator.frequency.value = 900 + i * 100; // Slightly different frequencies
-        oscillator.type = "triangle";
-
-        // Sharp attack and decay
-        const startTime = now + i * (soundDuration + gap);
-        gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.01); // Quick attack
-        gainNode.gain.exponentialRampToValueAtTime(
-          0.01,
-          startTime + soundDuration,
-        ); // Decay
-
-        oscillator.start(startTime);
-        oscillator.stop(startTime + soundDuration);
-      }
+      if (!audioRef.current) return;
+      audioRef.current.currentTime = 0;
+      audioRef.current.volume = 0.25;
+      audioRef.current.play().catch(() => { });
     } catch (e) {
       console.warn("Audio playback failed:", e);
     }
-  }, [getAudioContext]);
+  }, []);
+
+  const stopSpinAudio = useCallback(() => {
+    try {
+      if (!audioRef.current) return;
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    } catch (e) {
+      console.warn("Audio stop failed:", e);
+    }
+  }, []);
 
   // Ease-in-out-quart animation (from index.html)
   const easeInOutQuart = (t) => {
@@ -324,6 +303,7 @@ const Wheel = ({
     if (localSpinning || items.length === 0) return;
 
     try {
+      playSpinAudio();
       setLocalSpinning(true);
       onSpinStateChange?.(true);
       lastSegmentRef.current = -1;
@@ -363,6 +343,7 @@ const Wheel = ({
             onSpinComplete?.(response.data.data);
             onSpinStateChange?.(false);
             setLocalSpinning(false);
+            stopSpinAudio();
             resolve();
           }
         };
@@ -376,6 +357,7 @@ const Wheel = ({
         message: "Lỗi quay vòng",
         description: error.message || "Có lỗi xảy ra.",
       });
+      stopSpinAudio();
       onSpinStateChange?.(false);
       setLocalSpinning(false);
     }
@@ -402,9 +384,9 @@ const Wheel = ({
       <div
         ref={containerRef}
         className="relative w-full h-full overflow-hidden flex items-center justify-center"
-        style={{
+        style={!isFullscreen ? {
           backgroundImage: `conic-gradient(from 90deg, rgb(223, 48, 0) 0deg, rgb(223, 48, 0) 27.692deg, rgb(254, 96, 0) 27.692deg, rgb(254, 96, 0) 55.385deg, rgb(255, 145, 37) 55.385deg, rgb(255, 145, 37) 83.077deg, rgb(251, 187, 95) 83.077deg, rgb(251, 187, 95) 110.769deg, rgb(218, 217, 154) 110.769deg, rgb(218, 217, 154) 138.462deg, rgb(169, 230, 202) 138.462deg, rgb(169, 230, 202) 166.154deg, rgb(114, 224, 232) 166.154deg, rgb(114, 224, 232) 193.846deg, rgb(62, 201, 236) 193.846deg, rgb(62, 201, 236) 221.538deg, rgb(20, 163, 214) 221.538deg, rgb(20, 163, 214) 249.231deg, rgb(0, 116, 171) 249.231deg, rgb(0, 116, 171) 276.923deg, rgb(0, 67, 115) 276.923deg, rgb(0, 67, 115) 304.615deg, rgb(18, 22, 55) 304.615deg, rgb(18, 22, 55) 332.308deg, rgb(58, 0, 5) 332.308deg, rgb(58, 0, 5) 360deg)`,
-        }}
+        } : {}}
       >
         {/* Constellation Background Component */}
         <ConstellationBackground />
@@ -461,17 +443,17 @@ const Wheel = ({
             <button
               onClick={handleSpin}
               disabled={localSpinning || items.length === 0}
-              className={`absolute inset-1/2 w-28 h-28 md:w-32 md:h-32 -translate-x-1/2 -translate-y-1/2 rounded-full border-[5px] border-white font-bold text-2xl md:text-3xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${
-                localSpinning || items.length === 0
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-red-500 hover:bg-red-600 active:scale-95 cursor-pointer"
-              }`}
+              className={`absolute inset-1/2 w-28 h-28 md:w-32 md:h-32 -translate-x-1/2 -translate-y-1/2 rounded-full border-[5px] border-white font-bold text-2xl md:text-3xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${localSpinning || items.length === 0
+                ? "cursor-not-allowed"
+                : "hover:bg-red-600 active:scale-95 cursor-pointer"
+                }`}
               style={{
                 backgroundColor:
-                  localSpinning || items.length === 0
-                    ? undefined
+                  items.length === 0
+                    ? "#9ca3af"
                     : "var(--pointer-color)",
                 boxShadow: `0 0 0 4px rgba(255,255,255,0.35), 0 8px 22px var(--pointer-color, #ef4444)66`,
+                opacity: 1,
               }}
             >
               <span className="drop-shadow-lg">Quay</span>

@@ -18,6 +18,18 @@ const Sidebar = ({
   showResultDisplay = true,
 }) => {
   const [activeTab, setActiveTab] = useState("items");
+  const [resultsCount, setResultsCount] = useState(0);
+  const [savedLists, setSavedLists] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("savedLists") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [showSavedModal, setShowSavedModal] = useState(false);
+  const [isAddingSavedList, setIsAddingSavedList] = useState(false);
+  const [newSavedListName, setNewSavedListName] = useState("");
+  const [newSavedListText, setNewSavedListText] = useState("");
 
   // Load last manual list from localStorage, fallback to current items
   const [textValue, setTextValue] = useState(() => {
@@ -132,6 +144,88 @@ const Sidebar = ({
     }
   };
 
+  const handleOpenSavedLists = () => {
+    setShowSavedModal(true);
+    setIsAddingSavedList(false);
+  };
+
+  const handleCloseSavedModal = () => {
+    setShowSavedModal(false);
+    setIsAddingSavedList(false);
+    setNewSavedListName("");
+    setNewSavedListText("");
+  };
+
+  const handleStartAddSavedList = () => {
+    setIsAddingSavedList(true);
+    setNewSavedListName("");
+    setNewSavedListText("");
+  };
+
+  const handleSaveSavedList = () => {
+    const name = newSavedListName.trim();
+    const content = newSavedListText.trim();
+    if (!name) {
+      notify({ type: "warning", message: "Vui lòng nhập tên danh sách" });
+      return;
+    }
+    if (!content) {
+      notify({ type: "warning", message: "Vui lòng nhập nội dung danh sách" });
+      return;
+    }
+
+    const listItems = content
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (!listItems.length) {
+      notify({ type: "warning", message: "Danh sách không được để trống" });
+      return;
+    }
+
+    const existing = savedLists.some((list) => list.name === name);
+    const updatedLists = existing
+      ? savedLists.map((list) =>
+          list.name === name ? { ...list, items: listItems } : list,
+        )
+      : [...savedLists, { name, items: listItems }];
+
+    localStorage.setItem("savedLists", JSON.stringify(updatedLists));
+    setSavedLists(updatedLists);
+    notify({
+      type: "success",
+      message: "Đã lưu danh sách",
+      description: `Danh sách "${name}" đã được lưu.`,
+    });
+    setIsAddingSavedList(false);
+    setNewSavedListName("");
+    setNewSavedListText("");
+  };
+
+  const handleCancelAddSavedList = () => {
+    setIsAddingSavedList(false);
+    setNewSavedListName("");
+    setNewSavedListText("");
+  };
+
+  const handleUseSavedList = (list) => {
+    setTextValue(list.items.join("\n"));
+    notify({
+      type: "success",
+      message: "Đã tải danh sách",
+      description: `Danh sách "${list.name}" đã được tải.`,
+    });
+    setShowSavedModal(false);
+  };
+
+  const handleDeleteSavedList = (name) => {
+    const filtered = savedLists.filter((list) => list.name !== name);
+    localStorage.setItem("savedLists", JSON.stringify(filtered));
+    setSavedLists(filtered);
+    notify({ type: "success", message: `Đã xóa danh sách "${name}"` });
+  };
+
   const shuffleList = () => {
     const arr = [...names];
     arr.sort(() => Math.random() - 0.5);
@@ -174,32 +268,22 @@ const Sidebar = ({
 
   return (
     <div className="sidebar">
+      {contextHolder}
       <div className="tabs">
         <div
           className={`tab ${activeTab === "items" ? "active" : ""}`}
           onClick={() => setActiveTab("items")}
-          style={
-            activeTab === "items"
-              ? { borderColor: pointerColor || undefined }
-              : undefined
-          }
         >
           Danh sách <span className="badge">{items.length}</span>
         </div>
         <div
           className={`tab ${activeTab === "results" ? "active" : ""}`}
           onClick={() => setActiveTab("results")}
-          style={
-            activeTab === "results"
-              ? { borderColor: pointerColor || undefined }
-              : undefined
-          }
         >
-          Kết quả vui <span className="badge"></span>
+          Kết quả <span className="badge">{resultsCount}</span>
         </div>
       </div>
 
-      {contextHolder}
       {showResultDisplay && (
         <ResultDisplay
           latestResult={latestResult}
@@ -207,6 +291,7 @@ const Sidebar = ({
           onDataChanged={onDataChanged}
           onItemDeleted={onItemDeleted}
           showResultsList={activeTab === "results"}
+          onResultsCountChange={setResultsCount}
         />
       )}
 
@@ -216,8 +301,15 @@ const Sidebar = ({
             <Space wrap>
               <Button onClick={shuffleList}>🔀 Trộn</Button>
               <Button onClick={sortAZ}>🔤 A đến Z</Button>
-              <Button danger onClick={clearList}>
-                ✖ Xóa hết
+              <Button
+                onClick={handleOpenSavedLists}
+                style={{
+                  backgroundColor: "#8bc34a",
+                  borderColor: "#8bc34a",
+                  color: "#fff",
+                }}
+              >
+                🔄 Danh sách đã lưu
               </Button>
             </Space>
           </div>
@@ -225,6 +317,71 @@ const Sidebar = ({
           <div className="px-4 py-2">
             <ImportExcel onImportSuccess={onImportSuccess} />
           </div>
+
+          <Modal
+            title="Danh sách đã lưu"
+            open={showSavedModal}
+            onCancel={handleCloseSavedModal}
+            footer={null}
+          >
+            {!isAddingSavedList ? (
+              <div>
+                <div className="mb-4">
+                  {savedLists.length > 0 ? (
+                    savedLists.map((list) => (
+                      <div
+                        key={list.name}
+                        className="flex items-center justify-between gap-2 mb-2"
+                      >
+                        <span>{list.name}</span>
+                        <Space>
+                          <Button
+                            size="small"
+                            onClick={() => handleUseSavedList(list)}
+                          >
+                            Mở
+                          </Button>
+                          <Button
+                            size="small"
+                            danger
+                            onClick={() => handleDeleteSavedList(list.name)}
+                          >
+                            Xóa
+                          </Button>
+                        </Space>
+                      </div>
+                    ))
+                  ) : (
+                    <div>Chưa có danh sách đã lưu.</div>
+                  )}
+                </div>
+                <Button type="primary" onClick={handleStartAddSavedList} block>
+                  Thêm danh sách lớp
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <Input
+                  placeholder="Tên danh sách lớp"
+                  value={newSavedListName}
+                  onChange={(e) => setNewSavedListName(e.target.value)}
+                  className="mb-3"
+                />
+                <Input.TextArea
+                  placeholder="Nhập danh sách lớp ở đây..."
+                  value={newSavedListText}
+                  onChange={(e) => setNewSavedListText(e.target.value)}
+                  rows={6}
+                />
+                <Space className="mt-3">
+                  <Button type="primary" onClick={handleSaveSavedList}>
+                    Thêm
+                  </Button>
+                  <Button onClick={handleCancelAddSavedList}>Huỷ</Button>
+                </Space>
+              </div>
+            )}
+          </Modal>
 
           <div className="px-4 py-2 flex-1">
             <Input.TextArea
@@ -238,12 +395,51 @@ const Sidebar = ({
           </div>
 
           <div className="px-4 py-2">
-            <Button type="primary" block onClick={handleUpdate}>
-              Cập nhật danh sách
+            <Button
+              type="primary"
+              block
+              onClick={handleUpdate}
+              style={{
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                padding: "0.9rem 1rem",
+              }}
+            >
+              Cập nhật vòng quay
             </Button>
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="tab-content px-4">
+          <div className="py-2">
+            <Button
+              block
+              onClick={() =>
+                Modal.confirm({
+                  title: "Xóa hết kết quả",
+                  content: "Bạn có muốn xóa sạch các lượt quay không?",
+                  okText: "Xóa hết",
+                  okType: "danger",
+                  cancelText: "Hủy",
+                  onOk() {
+                    /* ResultDisplay handles deletion via its own controls */
+                  },
+                })
+              }
+              style={{
+                backgroundColor: "#dc2626",
+                borderColor: "#dc2626",
+                color: "#ffffff",
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                padding: "0.9rem 1rem",
+              }}
+            >
+              Xóa lịch sử quay
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -44,11 +44,13 @@
   }
 
   .tab {
-    @apply flex-1 text-center px-4 py-3 cursor-pointer font-semibold text-slate-600 hover:bg-gray-50 transition;
+    @apply flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 cursor-pointer font-semibold text-slate-600 hover:bg-gray-50 transition;
+    font-size: 0.92rem;
   }
 
   .tab.active {
     @apply text-blue-600 border-b-2 border-blue-600;
+    border-color: #2563eb; /* fixed blue indicator */
   }
 
   .badge {
@@ -64,7 +66,7 @@
   }
 
   .toolbar {
-    @apply flex flex-wrap gap-2 p-4 border-b border-gray-200;
+    @apply flex flex-wrap gap-2 px-4 py-2 border-b border-gray-200;
   }
 
   .tool-btn {
