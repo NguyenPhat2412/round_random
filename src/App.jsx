@@ -233,9 +233,9 @@ function App() {
                 )}
 
                 {/* Main Wheel Area */}
-                <div className={`${isFullscreen ? "w-full h-full" : "w-full"} flex items-center justify-center`}> 
+                <div className={`${isFullscreen ? "w-full h-full" : "w-full h-full"} flex items-center justify-center`}> 
                   {items.length > 0 ? (
-                    <div className={`rounded-2xl border border-gray-200 bg-white shadow-sm flex items-center justify-center p-4 ${isFullscreen ? "w-full h-full border-0 rounded-none bg-transparent shadow-none p-0" : ""}`}>
+                    <div className={`flex items-center justify-center ${isFullscreen ? "w-full h-full bg-transparent" : "w-full h-full"}`}>
                       <div className="w-full max-w-[100%]" style={{display: 'grid', placeItems: 'center'}}>
                         <Wheel
                           items={items}
