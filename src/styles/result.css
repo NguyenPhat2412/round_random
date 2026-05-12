@@ -242,3 +242,33 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Responsive stability fixes: prevent overflow and reduce padding on tiny viewports */
+.result-display {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.result-display .results-list,
+.result-display .latest-content,
+.result-display .result-item {
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .result-display {
+    padding: 12px;
+    margin: 12px 0;
+    border-radius: 10px;
+  }
+
+  .latest-name {
+    font-size: 18px;
+  }
+
+  .no-results,
+  .loading {
+    padding: 24px;
+  }
+}

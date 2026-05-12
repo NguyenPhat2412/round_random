@@ -332,13 +332,15 @@ const ResultDisplay = ({
 
         {showResultsList && (
           <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-purple-50">
-            <div className="mb-4 flex items-center justify-between">
-              <h4 className="font-semibold text-slate-800 text-lg">
-                Danh sách quay trúng
-              </h4>
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-slate-800 text-lg">
+                  Danh sách quay trúng
+                </h4>
+              </div>
               {results.length > 0 && (
-                <Button danger size="small" onClick={handleClearAll}>
-                  Xóa hết
+                <Button danger size="small" onClick={handleClearAll} block>
+                  🗑️ Xóa lịch sử quay
                 </Button>
               )}
             </div>

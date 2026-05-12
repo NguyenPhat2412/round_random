@@ -451,8 +451,11 @@ const Wheel = ({
             className="relative"
             style={{ width: `${size}px`, height: `${size}px` }}
           >
-            <div className="absolute inset-0 rounded-full overflow-hidden">
-              <canvas ref={canvasRef} className="w-full h-full rounded-full" />
+            <div className="w-full h-full rounded-full overflow-hidden wheel-outer-shadow shadow-2xl">
+              <canvas
+                ref={canvasRef}
+                className="w-full h-full rounded-full wheel-canvas"
+              />
             </div>
 
             <button
