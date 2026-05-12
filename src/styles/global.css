@@ -1,6 +1,7 @@
 :root {
   --primary-color: #667eea;
   --secondary-color: #764ba2;
+  --pointer-color: #10b981;
   --success-color: #48bb78;
   --danger-color: #f56565;
   --warning-color: #ed8936;
@@ -34,7 +35,7 @@ body {
 }
 
 button {
-  background-color: var(--primary-color);
+  background-color: var(--pointer-color);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -45,7 +46,7 @@ button {
 }
 
 button:hover {
-  background-color: var(--secondary-color);
+  background-color: color-mix(in srgb, var(--pointer-color) 70%, black 10%);
   transform: translateY(-2px);
   box-shadow: var(--shadow);
 }
@@ -201,6 +202,14 @@ input[type="text"]:focus {
 
   .wheel-section {
     justify-content: center;
+    padding: 8px;
+  }
+
+  /* Ensure wheel doesn't overflow on very small screens */
+  .wheel-section canvas,
+  .wheel-section .rounded-2xl {
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .result-section {

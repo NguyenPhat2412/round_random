@@ -14,6 +14,8 @@ const ConstellationBackground = () => {
   const canvasRef = useRef(null);
   const particlesRef = useRef([]);
   const animationFrameId = useRef(null);
+  const resizeObserverRef = useRef(null);
+  const sizeRef = useRef({ width: 0, height: 0, pixelRatio: 1 });
 
   // 1. Hàm khởi tạo danh sách các hạt ngẫu nhiên
   const initParticles = useCallback((width, height) => {
@@ -34,9 +36,23 @@ const ConstellationBackground = () => {
   }, []);
 
   // 2. Hàm vẽ chính (Animation Loop)
-  const draw = useCallback((ctx, width, height) => {
-    // 2a. Xóa canvas cũ trước khi vẽ khung hình mới
-    ctx.clearRect(0, 0, width, height);
+  const draw = useCallback((ctx) => {
+    const { width, height } = sizeRef.current;
+    if (!width || !height) {
+      animationFrameId.current = requestAnimationFrame(() => draw(ctx));
+      return;
+    }
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.setTransform(
+      sizeRef.current.pixelRatio,
+      0,
+      0,
+      sizeRef.current.pixelRatio,
+      0,
+      0,
+    );
 
     const particles = particlesRef.current;
 
@@ -87,9 +103,7 @@ const ConstellationBackground = () => {
     }
 
     // Tiếp tục vòng lặp animation
-    animationFrameId.current = requestAnimationFrame(() =>
-      draw(ctx, width, height),
-    );
+    animationFrameId.current = requestAnimationFrame(() => draw(ctx));
   }, []);
 
   // 3. Setup Canvas và xử lý Resize màn hình
@@ -106,10 +120,14 @@ const ConstellationBackground = () => {
 
       const width = parent.clientWidth;
       const height = parent.clientHeight;
+      const pixelRatio = window.devicePixelRatio || 1;
+      sizeRef.current = { width, height, pixelRatio };
 
       // Set internal resolution của canvas
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = Math.max(1, Math.floor(width * pixelRatio));
+      canvas.height = Math.max(1, Math.floor(height * pixelRatio));
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
 
       // Khởi tạo lại hạt khi resize để rải đều lại màn hình
       initParticles(width, height);
@@ -119,7 +137,7 @@ const ConstellationBackground = () => {
     handleResize();
 
     // Bắt đầu vẽ
-    draw(ctx, canvas.width, canvas.height);
+    draw(ctx);
 
     // Lắng nghe sự kiện resize màn hình
     window.addEventListener("resize", handleResize);
@@ -127,10 +145,21 @@ const ConstellationBackground = () => {
     // Lắng nghe fullscreen change để resize canvas
     document.addEventListener("fullscreenchange", handleResize);
 
+    if (window.ResizeObserver) {
+      resizeObserverRef.current = new ResizeObserver(() => {
+        handleResize();
+      });
+      resizeObserverRef.current.observe(canvas.parentElement);
+    }
+
     // Cleanup function khi component unmount
     return () => {
       window.removeEventListener("resize", handleResize);
       document.removeEventListener("fullscreenchange", handleResize);
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }

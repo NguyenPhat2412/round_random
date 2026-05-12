@@ -1,18 +1,21 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useContext } from "react";
 import ImportExcel from "./ImportExcel";
 import ResultDisplay from "./ResultDisplay";
 import { generateDistinctColors } from "../utils/colorUtils";
 import { Button, Modal, Input, Space } from "antd";
 import useNotification from "../hooks/useNotification";
+import { ColorContext } from "../contexts/ColorContext";
 
 const Sidebar = ({
   items,
   onImportSuccess,
   onManualUpdate,
+  onItemDeleted,
   originalItems,
   latestResult,
   refreshKey,
   onDataChanged,
+  showResultDisplay = true,
 }) => {
   const [activeTab, setActiveTab] = useState("items");
 
@@ -56,6 +59,7 @@ const Sidebar = ({
   );
 
   const { notify, contextHolder } = useNotification();
+  const { pointerColor } = useContext(ColorContext);
 
   const handleUpdate = () => {
     // Save manual list to localStorage as "last manual list"
@@ -124,24 +128,37 @@ const Sidebar = ({
         <div
           className={`tab ${activeTab === "items" ? "active" : ""}`}
           onClick={() => setActiveTab("items")}
+          style={
+            activeTab === "items"
+              ? { borderColor: pointerColor || undefined }
+              : undefined
+          }
         >
           Danh sách <span className="badge">{items.length}</span>
         </div>
         <div
           className={`tab ${activeTab === "results" ? "active" : ""}`}
           onClick={() => setActiveTab("results")}
+          style={
+            activeTab === "results"
+              ? { borderColor: pointerColor || undefined }
+              : undefined
+          }
         >
           Kết quả vui <span className="badge"></span>
         </div>
       </div>
 
       {contextHolder}
-      <ResultDisplay
-        latestResult={latestResult}
-        refreshKey={refreshKey}
-        onDataChanged={onDataChanged}
-        showResultsList={activeTab === "results"}
-      />
+      {showResultDisplay && (
+        <ResultDisplay
+          latestResult={latestResult}
+          refreshKey={refreshKey}
+          onDataChanged={onDataChanged}
+          onItemDeleted={onItemDeleted}
+          showResultsList={activeTab === "results"}
+        />
+      )}
 
       {activeTab === "items" ? (
         <div className="tab-content">
@@ -152,7 +169,16 @@ const Sidebar = ({
               <Button danger onClick={clearList}>
                 ✖ Xóa hết
               </Button>
-              <Button onClick={resetList}>🔄 Danh sách gốc</Button>
+              <Button
+                onClick={resetList}
+                style={{
+                  backgroundColor: pointerColor,
+                  borderColor: pointerColor,
+                  color: pointerColor ? "#fff" : undefined,
+                }}
+              >
+                🔄 Danh sách gốc
+              </Button>
             </Space>
           </div>
 

@@ -1,14 +1,16 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useContext } from "react";
 import { Button, Modal, Pagination, Spin, Empty, Space } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import { resultAPI, itemAPI } from "../services/api";
 import useNotification from "../hooks/useNotification";
 import { triggerFireworks } from "../utils/confetti";
+import { ColorContext } from "../contexts/ColorContext";
 
 const ResultDisplay = ({
   latestResult,
   refreshKey,
   onDataChanged,
+  onItemDeleted,
   showResultsList = true,
 }) => {
   const [results, setResults] = useState([]);
@@ -21,6 +23,7 @@ const ResultDisplay = ({
   const shownResultKeyRef = useRef(null);
   const fireworksTimerRef = useRef(null);
   const { notify, contextHolder } = useNotification();
+  const { pointerColor } = useContext(ColorContext);
 
   const latestResultKey =
     latestResult?.result?._id ||
@@ -53,9 +56,9 @@ const ResultDisplay = ({
 
     if (hasTriggeredFireworksRef.current) return;
 
-    fireworksTimerRef.current = triggerFireworks();
+    fireworksTimerRef.current = triggerFireworks(pointerColor);
     hasTriggeredFireworksRef.current = true;
-  }, [showModal, latestResult]);
+  }, [showModal, latestResult, pointerColor]);
 
   useEffect(() => {
     return () => {
@@ -164,7 +167,7 @@ const ResultDisplay = ({
     try {
       const response = await resultAPI.deleteResult(id);
       if (response.data.success) {
-        fetchResults();
+        setResults(results.filter((result) => result._id !== id));
         onDataChanged?.();
         notify({ type: "success", message: "Xóa kết quả thành công" });
       }
@@ -178,8 +181,8 @@ const ResultDisplay = ({
       const id = latestResult?.item?._id || latestResult?.result?.itemId;
       if (!id) return;
       await itemAPI.deleteItem(id);
+      onItemDeleted?.(id);
       dismissModal();
-      fetchResults();
       onDataChanged?.();
       notify({ type: "success", message: "Xóa mục thành công" });
     } catch (error) {
@@ -190,19 +193,17 @@ const ResultDisplay = ({
   return (
     <>
       {contextHolder}
-      <div className="rounded-xl border border-gray-300 bg-white p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-slate-800">
-              Những lượt quay trước
-            </h3>
-          </div>
-        </div>
-
+      <div
+        className={`rounded-xl border border-gray-300 bg-white p-4 ${
+          showResultsList
+            ? ""
+            : "pointer-events-none bg-transparent border-0 p-0"
+        }`}
+      >
         <Modal
           title={
-            <div className="text-center font-bold text-xl text-emerald-600">
-              🎉 Xin chúc mừng bạn nhỏ may mắn nhất lớp mình hôm nay
+            <div className="text-center text-2xl  text-black-600">
+              🎉 Xin chúc mừng bạn nhỏ may mắn nhất lớp mình hôm nay:
             </div>
           }
           open={showModal && !!latestResult}
@@ -210,6 +211,7 @@ const ResultDisplay = ({
           footer={null}
           centered
           className="result-pop-modal"
+          width={760}
           maskStyle={{ backgroundColor: "rgba(15, 23, 42, 0.45)" }}
         >
           <style>{`
@@ -218,39 +220,102 @@ const ResultDisplay = ({
               60% { transform: scale(1.03); opacity: 1; }
               100% { transform: scale(1); opacity: 1; }
             }
+            @keyframes buttonPop {
+              0% { transform: scale(0.75); opacity: 0; }
+              60% { transform: scale(1.08); opacity: 1; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+            .result-pop-modal {
+              max-width: calc(100vw - 24px);
+            }
+            .result-pop-modal .ant-modal {
+              width: min(760px, calc(100vw - 24px)) !important;
+            }
             .result-pop-modal .ant-modal-content {
               animation: popIn 0.35s ease-out;
               box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
               border: 2px solid rgba(16, 185, 129, 0.12);
+              padding: 28px 30px 26px;
+              position: relative;
+              overflow: hidden;
+            }
+            .result-pop-modal .ant-modal-header::before {
+              content: "";
+              position: absolute;
+              left: 0;
+              top: 0;
+              height: 6px;
+              width: 100%;
+              background: var(--pointer-color, linear-gradient(90deg, #10b981, #34d399));
+              border-top-left-radius: 8px;
+              border-top-right-radius: 8px;
+            }
+            .result-pop-modal .ant-modal-content::after {
+              content: "";
+              position: absolute;
+              inset: 0;
+              pointer-events: none;
+              border-radius: 16px;
+              box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+            }
+            .result-pop-modal .ant-modal-header {
+              margin-bottom: 20px;
+              border-bottom: 0;
+              padding-bottom: 0;
+            }
+            .result-pop-modal .ant-modal-title {
+              width: 100%;
+            }
+            .result-pop-modal .ant-modal-body {
+              padding: 0;
             }
           `}</style>
 
           <div className="mb-4 text-center">
-            <div className="text-lg text-slate-700 font-medium">
-              <span className="font-bold text-emerald-700">
-                {latestResult?.item?.name || latestResult?.itemName}
+            <div className="text-xl md:text-2xl text-slate-700 font-medium leading-snug">
+              <span className="font-bold text-emerald-700 text-4xl md:text-5xl inline-block">
+                "{latestResult?.item?.name || latestResult?.itemName}"
               </span>
             </div>
           </div>
 
-          <Space className="w-full flex justify-center gap-3">
-            <Button danger onClick={handleModalDelete} type="primary">
-              Xóa
-            </Button>
-            <Button
-              onClick={dismissModal}
-              className="animate-pulse font-bold bg-emerald-500 text-white border-emerald-500 hover:!bg-emerald-600 hover:!text-white"
-            >
-              ✅ Tiếp tục
-            </Button>
-          </Space>
+          <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <div className="w-full sm:w-auto flex justify-center">
+              <Space>
+                <Button
+                  danger
+                  onClick={handleModalDelete}
+                  className="font-bold !bg--red600 !border-red-600 !text-white hover:!bg-red-700 hover:!border-red-700 !shadow-lg"
+                  type="primary"
+                  style={{ animation: "buttonPop 0.45s ease-out" }}
+                >
+                  Xóa ô này
+                </Button>
+              </Space>
+            </div>
+            <div className="w-full sm:w-auto flex justify-center">
+              <Space>
+                <Button
+                  onClick={dismissModal}
+                  className="font-bold text-white w-full sm:w-auto"
+                  style={{
+                    animation: "buttonPop 0.45s ease-out 0.08s both",
+                    backgroundColor: pointerColor || "#10b981",
+                    borderColor: pointerColor || "#10b981",
+                  }}
+                >
+                  Tiếp tục quay
+                </Button>
+              </Space>
+            </div>
+          </div>
         </Modal>
 
         {showResultsList && (
           <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-purple-50">
             <div className="mb-4 flex items-center justify-between">
               <h4 className="font-semibold text-slate-800 text-lg">
-                📋 Danh sách quay trúng
+                Danh sách quay trúng
               </h4>
               {results.length > 0 && (
                 <Button danger size="small" onClick={handleClearAll}>

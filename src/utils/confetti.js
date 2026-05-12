@@ -1,7 +1,7 @@
 import confetti from "canvas-confetti";
 
-export const triggerFireworks = () => {
-  const colors = [
+export const triggerFireworks = (preferredColor) => {
+  const baseColors = [
     "#F97316",
     "#10B981",
     "#60A5FA",
@@ -9,15 +9,18 @@ export const triggerFireworks = () => {
     "#FDE68A",
     "#A855F7",
   ];
+  const colors = preferredColor
+    ? [preferredColor, ...baseColors.filter((c) => c !== preferredColor)]
+    : baseColors;
 
   const defaults = {
-    ticks: 110,
-    startVelocity: 42,
-    spread: 60,
-    gravity: 0.95,
-    decay: 0.91,
-    scalar: 1.05,
-    zIndex: 100,
+    ticks: 160,
+    startVelocity: 52,
+    spread: 72,
+    gravity: 0.88,
+    decay: 0.9,
+    scalar: 1.08,
+    zIndex: 3000,
     colors,
     shapes: ["square", "circle"],
   };
@@ -25,27 +28,34 @@ export const triggerFireworks = () => {
   const randomInRange = (min, max) => Math.random() * (max - min) + min;
 
   const interval = setInterval(() => {
-    const particleCount = 30;
+    const particleCount = 42;
 
     confetti({
       ...defaults,
       particleCount,
-      spread: 90,
-      origin: { x: 0.5, y: 0.55 },
+      spread: 100,
+      origin: { x: 0.5, y: 0.58 },
     });
 
     confetti({
       ...defaults,
-      particleCount: Math.floor(particleCount * 0.8),
-      spread: 70,
-      origin: { x: randomInRange(0.1, 0.35), y: randomInRange(0.15, 0.35) },
+      particleCount: Math.floor(particleCount * 0.9),
+      spread: 80,
+      origin: { x: randomInRange(0.08, 0.32), y: randomInRange(0.12, 0.34) },
     });
 
     confetti({
       ...defaults,
-      particleCount: Math.floor(particleCount * 0.8),
-      spread: 70,
-      origin: { x: randomInRange(0.65, 0.9), y: randomInRange(0.15, 0.35) },
+      particleCount: Math.floor(particleCount * 0.9),
+      spread: 80,
+      origin: { x: randomInRange(0.68, 0.92), y: randomInRange(0.12, 0.34) },
+    });
+
+    confetti({
+      ...defaults,
+      particleCount: Math.floor(particleCount * 0.7),
+      spread: 85,
+      origin: { x: randomInRange(0.2, 0.8), y: randomInRange(0.08, 0.18) },
     });
   }, 300);
 

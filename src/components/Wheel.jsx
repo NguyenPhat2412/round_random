@@ -4,7 +4,9 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useContext,
 } from "react";
+import { ColorContext } from "../contexts/ColorContext";
 import { itemAPI } from "../services/api";
 import useNotification from "../hooks/useNotification";
 import { pickReadableTextColor } from "../utils/colorUtils";
@@ -41,8 +43,10 @@ const Wheel = ({
   onSpinComplete,
   size = 540,
 }) => {
+  const { setPointerColor } = useContext(ColorContext);
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
+  const [pixelSize, setPixelSize] = useState(size);
   const [localSpinning, setLocalSpinning] = useState(false);
   const [currentRotation, setCurrentRotation] = useState(0);
   const lastSegmentRef = useRef(-1);
@@ -72,6 +76,13 @@ const Wheel = ({
     return sectorColors[segmentIndex] || "#ef4444";
   }, [currentRotation, items.length, sectorColors]);
 
+  // Update shared pointer color in context when it changes
+  useEffect(() => {
+    try {
+      setPointerColor?.(currentPointerColor);
+    } catch (e) {}
+  }, [currentPointerColor, setPointerColor]);
+
   // Remove old particles useMemo - using ConstellationBackground component instead
 
   // Draw canvas with pie slices (logic from index.html)
@@ -79,12 +90,23 @@ const Wheel = ({
     const canvas = canvasRef.current;
     if (!canvas || !items.length) return;
 
-    const ctx = canvas.getContext("2d");
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const outerRadius = canvas.width / 2;
+    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const cssSize = pixelSize;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // set actual canvas pixel size for crisp rendering
+    canvas.width = Math.round(cssSize * dpr);
+    canvas.height = Math.round(cssSize * dpr);
+    canvas.style.width = `${cssSize}px`;
+    canvas.style.height = `${cssSize}px`;
+
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const centerX = cssSize / 2;
+    const centerY = cssSize / 2;
+    const outerRadius = cssSize / 2;
+
+    ctx.clearRect(0, 0, cssSize, cssSize);
 
     // Save context and rotate by currentRotation
     ctx.save();
@@ -96,25 +118,31 @@ const Wheel = ({
     ctx.arc(0, 0, outerRadius, 0, 2 * Math.PI);
     ctx.fillStyle = "#f39c12"; // Orange
     ctx.fill();
+    ctx.lineWidth = Math.max(8, cssSize * 0.03);
+    ctx.strokeStyle = "#f39c12";
+    ctx.stroke();
 
     // Draw 30 yellow dots around outer ring
     const dotCount = 30;
     for (let i = 0; i < dotCount; i++) {
       const angle = (i * 2 * Math.PI) / dotCount;
-      const dotX = Math.cos(angle) * (outerRadius - 10);
-      const dotY = Math.sin(angle) * (outerRadius - 10);
+      const dotX = Math.cos(angle) * (outerRadius - Math.max(8, cssSize * 0.02));
+      const dotY = Math.sin(angle) * (outerRadius - Math.max(8, cssSize * 0.02));
 
       ctx.beginPath();
-      ctx.arc(dotX, dotY, 4, 0, 2 * Math.PI);
+      ctx.arc(dotX, dotY, Math.max(2, cssSize * 0.008), 0, 2 * Math.PI);
       ctx.fillStyle = "#ffeb3b";
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = "rgba(255, 235, 59, 0.55)";
       ctx.fill();
+      ctx.shadowBlur = 0;
     }
 
     ctx.restore();
 
     // Draw inner sectors
     const arc = (2 * Math.PI) / items.length;
-    const innerRadius = outerRadius - 20;
+    const innerRadius = outerRadius - Math.max(20, cssSize * 0.06);
 
     for (let i = 0; i < items.length; i++) {
       const angle = currentRotation + i * arc;
@@ -126,7 +154,7 @@ const Wheel = ({
       ctx.fill();
 
       ctx.strokeStyle = "rgba(255,255,255,0.4)";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = Math.max(1, cssSize * 0.0025);
       ctx.stroke();
 
       // Draw text
@@ -136,22 +164,22 @@ const Wheel = ({
       ctx.textAlign = "right";
       ctx.fillStyle = "#ffffff";
       ctx.shadowColor = "rgba(0,0,0,0.8)";
-      ctx.shadowBlur = 4;
+      ctx.shadowBlur = Math.max(2, cssSize * 0.006);
 
       const label = (items[i].name || "").slice(0, 25);
       const maxWidth = innerRadius - 40; // Max width for text
-      let fontSize = 18;
-      ctx.font = `${fontSize}px Roboto, sans-serif`;
+      let fontSize = Math.max(10, Math.floor(cssSize * 0.036));
+      ctx.font = `normal ${fontSize}px Roboto, sans-serif`;
       let textWidth = ctx.measureText(label).width;
 
       // Auto-shrink text if too long
-      while (textWidth > maxWidth && fontSize > 10) {
+      while (textWidth > maxWidth && fontSize > 8) {
         fontSize -= 1;
-        ctx.font = `${fontSize}px Roboto, sans-serif`;
+        ctx.font = `normal ${fontSize}px Roboto, sans-serif`;
         textWidth = ctx.measureText(label).width;
       }
 
-      ctx.fillText(label, innerRadius - 20, 6);
+      ctx.fillText(label, innerRadius - 20, Math.max(6, cssSize * 0.012));
       ctx.restore();
     }
 
@@ -169,17 +197,32 @@ const Wheel = ({
       playTickSound();
       lastSegmentRef.current = currentSegment;
     }
-  }, [items, sectorColors, currentRotation, localSpinning]);
+  }, [items, sectorColors, currentRotation, localSpinning, pixelSize]);
 
   // Setup canvas on mount and resize
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
-    const pixelSize = Math.max(420, Math.floor(size));
-    canvas.width = pixelSize;
-    canvas.height = pixelSize;
-    drawWheel();
+    const ro = new ResizeObserver(() => {
+      const cw = Math.floor(container.clientWidth) || Math.floor(size);
+      const maxAllowed = Math.floor(Math.min(size, window.innerWidth - 32));
+      const finalSize = Math.max(200, Math.min(cw, maxAllowed));
+      setPixelSize(finalSize);
+    });
+
+    ro.observe(container);
+    // initial
+    const cw = Math.floor(container.clientWidth) || Math.floor(size);
+    const maxAllowed = Math.floor(Math.min(size, window.innerWidth - 32));
+    setPixelSize(Math.max(200, Math.min(cw, maxAllowed)));
+
+    return () => {
+      try {
+        ro.disconnect();
+      } catch (e) {}
+    };
   }, [drawWheel, size]);
 
   // Redraw when rotation changes
@@ -215,28 +258,38 @@ const Wheel = ({
     return audioContextRef.current;
   }, []);
 
-  // Play tick sound during spin - smooth and muted
+  // Play tick sound during spin - three sharp "tinh tinh tinh" sounds
   const playTickSound = useCallback(() => {
     try {
       const audioContext = getAudioContext();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      // Lower frequency (400Hz) for softer, smoother sound
-      oscillator.frequency.value = 200;
-      oscillator.type = "sine";
-
-      // Softer volume with smooth fade-in and fade-out
       const now = audioContext.currentTime;
-      gainNode.gain.setValueAtTime(0, now);
-      gainNode.gain.linearRampToValueAtTime(0.15, now + 0.05); // Fade in
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15); // Fade out
+      const soundDuration = 0.08; // Duration of each "tinh" sound
+      const gap = 0.06; // Gap between sounds
 
-      oscillator.start(now);
-      oscillator.stop(now + 0.15);
+      // Create 3 sharp "tinh" sounds
+      for (let i = 0; i < 3; i++) {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // High frequency for sharp sound
+        oscillator.frequency.value = 900 + i * 100; // Slightly different frequencies
+        oscillator.type = "triangle";
+
+        // Sharp attack and decay
+        const startTime = now + i * (soundDuration + gap);
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.01); // Quick attack
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.01,
+          startTime + soundDuration,
+        ); // Decay
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + soundDuration);
+      }
     } catch (e) {
       console.warn("Audio playback failed:", e);
     }
@@ -399,15 +452,13 @@ const Wheel = ({
               <canvas
                 ref={canvasRef}
                 className="w-full h-full rounded-full"
-                width={size}
-                height={size}
               />
             </div>
 
             <button
               onClick={handleSpin}
               disabled={localSpinning || items.length === 0}
-              className={`absolute inset-1/2 w-24 h-24 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white font-bold text-xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${
+              className={`absolute inset-1/2 w-28 h-28 md:w-32 md:h-32 -translate-x-1/2 -translate-y-1/2 rounded-full border-[5px] border-white font-bold text-2xl md:text-3xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${
                 localSpinning || items.length === 0
                   ? "bg-gray-400 cursor-not-allowed"
                   : "bg-red-500 hover:bg-red-600 active:scale-95 cursor-pointer"
@@ -416,16 +467,12 @@ const Wheel = ({
                 backgroundColor:
                   localSpinning || items.length === 0
                     ? undefined
-                    : currentPointerColor,
-                boxShadow: `0 0 0 4px rgba(255,255,255,0.35), 0 8px 22px ${currentPointerColor}66`,
+                    : "var(--pointer-color)",
+                boxShadow: `0 0 0 4px rgba(255,255,255,0.35), 0 8px 22px var(--pointer-color, #ef4444)66`,
               }}
             >
               <span className="drop-shadow-lg">Quay</span>
             </button>
-          </div>
-
-          <div className="mt-8 text-center text-gray-700">
-            <p className="text-lg font-medium">Bấm nút để quay vòng</p>
           </div>
         </div>
       </div>
