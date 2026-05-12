@@ -12,6 +12,7 @@ const ResultDisplay = ({
   onDataChanged,
   onItemDeleted,
   showResultsList = true,
+  onResultsCountChange,
 }) => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -119,7 +120,7 @@ const ResultDisplay = ({
       oscillator.stop(audioContext.currentTime + 0.24);
 
       oscillator.onended = () => {
-        audioContext.close().catch(() => {});
+        audioContext.close().catch(() => { });
       };
 
       hasPlayedAudioRef.current = true;
@@ -142,7 +143,9 @@ const ResultDisplay = ({
       setLoading(true);
       const response = await resultAPI.getResultsByPage(page, 10);
       if (response.data.success) {
-        setResults(response.data.data);
+        const fetchedResults = response.data.data;
+        setResults(fetchedResults);
+        onResultsCountChange?.(fetchedResults.length ?? 0);
         setTotalPages(response.data.pagination.total_pages);
       }
     } catch (error) {
@@ -164,6 +167,7 @@ const ResultDisplay = ({
           const response = await resultAPI.clearAllResults();
           if (response.data.success) {
             setResults([]);
+            onResultsCountChange?.(0);
             setPage(1);
             onDataChanged?.();
             notify({
@@ -182,7 +186,9 @@ const ResultDisplay = ({
     try {
       const response = await resultAPI.deleteResult(id);
       if (response.data.success) {
-        setResults(results.filter((result) => result._id !== id));
+        const updated = results.filter((result) => result._id !== id);
+        setResults(updated);
+        onResultsCountChange?.(updated.length);
         onDataChanged?.();
         notify({ type: "success", message: "Xóa kết quả thành công" });
       }
@@ -209,11 +215,10 @@ const ResultDisplay = ({
     <>
       {contextHolder}
       <div
-        className={`rounded-xl border border-gray-300 bg-white p-4 ${
-          showResultsList
+        className={`rounded-xl border border-gray-300 bg-white p-4 ${showResultsList
             ? ""
             : "pointer-events-none bg-transparent border-0 p-0"
-        }`}
+          }`}
       >
         <Modal
           title={
@@ -318,9 +323,9 @@ const ResultDisplay = ({
                   onClick={dismissModal}
                   className="font-bold text-white w-full sm:w-auto"
                   style={{
-                    animation: "buttonPop 0.45s ease-out 0.08s both",
-                    backgroundColor: pointerColor || "#10b981",
-                    borderColor: pointerColor || "#10b981",
+                    backgroundColor: "#2563eb",
+                    borderColor: "#2563eb",
+                    fontWeight: 700,
                   }}
                 >
                   Tiếp tục quay
@@ -336,11 +341,6 @@ const ResultDisplay = ({
               <h4 className="font-semibold text-slate-800 text-lg">
                 Danh sách quay trúng
               </h4>
-              {results.length > 0 && (
-                <Button danger size="small" onClick={handleClearAll}>
-                  Xóa hết
-                </Button>
-              )}
             </div>
 
             {loading ? (

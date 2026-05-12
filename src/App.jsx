@@ -42,6 +42,8 @@ function App() {
   useEffect(() => {
     if (previousFullscreenRef.current && !isFullscreen) {
       setLatestResult(null);
+    } else if (!previousFullscreenRef.current && isFullscreen) {
+      setLatestResult(null);
     }
     previousFullscreenRef.current = isFullscreen;
   }, [isFullscreen]);
@@ -49,11 +51,13 @@ function App() {
   useEffect(() => {
     const update = () => {
       const vw = window.innerWidth;
-      let base = isFullscreen ? 700 : 620;
+      let base = isFullscreen ? 650 : 500;  // Giảm từ 700 xuống 650 cho fullscreen, từ 620 xuống 500 cho không fullscreen
       if (vw < 640) {
-        base = Math.min(360, Math.max(260, vw - 48));
+        base = Math.min(320, Math.max(240, vw - 48));  // Giảm size tối đa từ 360 xuống 320, tối thiểu từ 260 xuống 240
       } else if (vw < 1024) {
-        base = Math.min(520, Math.max(420, vw - 200));
+        base = Math.min(450, Math.max(380, vw - 200));  // Giảm size tối đa từ 520 xuống 450, tối thiểu từ 420 xuống 380
+      } else if (vw < 1440) {  // Thêm điều kiện cho màn hình như MacBook 13 (dưới 1440px)
+        base = Math.min(480, base);  // Giới hạn tối đa 480px cho màn hình dưới 1440px
       }
       setMaxWheelSize(base);
     };
@@ -167,10 +171,10 @@ function App() {
   return (
     <ColorProvider>
       <div
-        className={`h-screen w-screen flex flex-col text-slate-800 overflow-hidden ${isFullscreen
-            ? "bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.14),_transparent_28%),linear-gradient(180deg,_#0b1220_0%,_#111827_52%,_#0f172a_100%)]"
-            : "bg-slate-50"
-          }`}
+        className={`h-screen w-screen flex flex-col text-slate-800 overflow-hidden ${isFullscreen ? "" : "bg-slate-50"}`}
+        style={isFullscreen ? {
+          backgroundImage: `conic-gradient(from 90deg, rgb(223, 48, 0) 0deg, rgb(223, 48, 0) 27.692deg, rgb(254, 96, 0) 27.692deg, rgb(254, 96, 0) 55.385deg, rgb(255, 145, 37) 55.385deg, rgb(255, 145, 37) 83.077deg, rgb(251, 187, 95) 83.077deg, rgb(251, 187, 95) 110.769deg, rgb(218, 217, 154) 110.769deg, rgb(218, 217, 154) 138.462deg, rgb(169, 230, 202) 138.462deg, rgb(169, 230, 202) 166.154deg, rgb(114, 224, 232) 166.154deg, rgb(114, 224, 232) 193.846deg, rgb(62, 201, 236) 193.846deg, rgb(62, 201, 236) 221.538deg, rgb(20, 163, 214) 221.538deg, rgb(20, 163, 214) 249.231deg, rgb(0, 116, 171) 249.231deg, rgb(0, 116, 171) 276.923deg, rgb(0, 67, 115) 276.923deg, rgb(0, 67, 115) 304.615deg, rgb(18, 22, 55) 304.615deg, rgb(18, 22, 55) 332.308deg, rgb(58, 0, 5) 332.308deg, rgb(58, 0, 5) 360deg)`
+        } : {}}
       >
         {contextHolder}
         {!isFullscreen && (
@@ -214,7 +218,7 @@ function App() {
 
               {/* Content Grid */}
               <div
-                className={`flex-1 grid gap-4 ${isFullscreen ? "place-items-center" : "grid-cols-1 lg:grid-cols-[280px_1fr]"}`}
+                className={`flex-1 grid gap-4 ${isFullscreen ? "place-items-center" : "grid-cols-1 lg:grid-cols-[320px_1fr]"}`}
               >
                 {/* Left Sidebar (keeps first column) */}
                 {!isFullscreen && (
@@ -242,7 +246,7 @@ function App() {
                       className={`flex items-center justify-center ${isFullscreen ? "w-full h-full bg-transparent" : "w-full h-full"}`}
                     >
                       <div
-                        className="w-full max-w-[100%]"
+                        className="w-full max-w-[100%] h-full"
                         style={{ display: "grid", placeItems: "center" }}
                       >
                         <Wheel
@@ -251,6 +255,7 @@ function App() {
                           onSpinStateChange={setIsSpinning}
                           onSpinComplete={handleSpinComplete}
                           size={maxWheelSize}
+                          isFullscreen={isFullscreen}
                         />
                       </div>
                     </div>
