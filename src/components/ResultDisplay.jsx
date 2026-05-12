@@ -5,6 +5,7 @@ import { resultAPI, itemAPI } from "../services/api";
 import useNotification from "../hooks/useNotification";
 import { triggerFireworks } from "../utils/confetti";
 import { ColorContext } from "../contexts/ColorContext";
+import clapAudio from "../../audio/clap.mp3";
 
 const ResultDisplay = ({
   latestResult,
@@ -20,10 +21,13 @@ const ResultDisplay = ({
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [itemIsActive, setItemIsActive] = useState(true);
+  const pageCacheRef = useRef({});
+  const hasMountedPageEffectRef = useRef(false);
   const hasPlayedAudioRef = useRef(false);
   const hasTriggeredFireworksRef = useRef(false);
   const shownResultKeyRef = useRef(null);
   const fireworksTimerRef = useRef(null);
+  const clapAudioRef = useRef(null);
   const { notify, contextHolder } = useNotification();
   const { pointerColor } = useContext(ColorContext);
 
@@ -35,8 +39,19 @@ const ResultDisplay = ({
     null;
 
   useEffect(() => {
-    fetchResults();
-  }, [page, refreshKey]);
+    pageCacheRef.current = {};
+    fetchResults(page, { force: true });
+    // refreshKey means the underlying list changed, so invalidate cached pages.
+  }, [refreshKey]);
+
+  useEffect(() => {
+    if (!hasMountedPageEffectRef.current) {
+      hasMountedPageEffectRef.current = true;
+      return;
+    }
+
+    fetchResults(page);
+  }, [page]);
 
   useEffect(() => {
     if (!latestResultKey) return;
@@ -92,36 +107,15 @@ const ResultDisplay = ({
     if (hasPlayedAudioRef.current) return;
 
     try {
-      const AudioContextClass =
-        window.AudioContext || window.webkitAudioContext;
-      const audioContext = new AudioContextClass();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
+      if (!clapAudioRef.current) {
+        clapAudioRef.current = new Audio(clapAudio);
+        clapAudioRef.current.preload = "auto";
+      }
 
-      oscillator.type = "triangle";
-      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(
-        1320,
-        audioContext.currentTime + 0.18,
-      );
-      gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.18,
-        audioContext.currentTime + 0.02,
-      );
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.0001,
-        audioContext.currentTime + 0.22,
-      );
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.24);
-
-      oscillator.onended = () => {
-        audioContext.close().catch(() => {});
-      };
+      clapAudioRef.current.currentTime = 0;
+      clapAudioRef.current.play().catch((error) => {
+        console.error("Clap audio playback failed:", error);
+      });
 
       hasPlayedAudioRef.current = true;
     } catch (error) {
@@ -138,15 +132,32 @@ const ResultDisplay = ({
     setItemIsActive(true); // Reset when modal closes
   };
 
-  const fetchResults = async () => {
+  const fetchResults = async (targetPage = page, options = {}) => {
+    const { force = false } = options;
+
+    if (!force) {
+      const cachedPage = pageCacheRef.current[targetPage];
+      if (cachedPage) {
+        setResults(cachedPage.results);
+        setTotalPages(cachedPage.totalPages);
+        onResultsCountChange?.(cachedPage.results.length ?? 0);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
-      const response = await resultAPI.getResultsByPage(page, 10);
+      const response = await resultAPI.getResultsByPage(targetPage, 10);
       if (response.data.success) {
         const fetchedResults = response.data.data;
         setResults(fetchedResults);
         onResultsCountChange?.(fetchedResults.length ?? 0);
-        setTotalPages(response.data.pagination.total_pages);
+        const totalPagesValue = response.data.pagination.total_pages;
+        setTotalPages(totalPagesValue);
+        pageCacheRef.current[targetPage] = {
+          results: fetchedResults,
+          totalPages: totalPagesValue,
+        };
       }
     } catch (error) {
       console.error("Error fetching results:", error);
@@ -167,6 +178,7 @@ const ResultDisplay = ({
           const response = await resultAPI.clearAllResults();
           if (response.data.success) {
             setResults([]);
+            pageCacheRef.current = {};
             onResultsCountChange?.(0);
             setPage(1);
             onDataChanged?.();
@@ -188,6 +200,10 @@ const ResultDisplay = ({
       if (response.data.success) {
         const updated = results.filter((result) => result._id !== id);
         setResults(updated);
+        pageCacheRef.current[page] = {
+          ...(pageCacheRef.current[page] || {}),
+          results: updated,
+        };
         onResultsCountChange?.(updated.length);
         onDataChanged?.();
         notify({ type: "success", message: "Xóa kết quả thành công" });
@@ -344,11 +360,6 @@ const ResultDisplay = ({
                   Danh sách quay trúng
                 </h4>
               </div>
-              {results.length > 0 && (
-                <Button danger size="small" onClick={handleClearAll} block>
-                  🗑️ Xóa lịch sử quay
-                </Button>
-              )}
             </div>
 
             {loading ? (
@@ -391,8 +402,9 @@ const ResultDisplay = ({
                       current={page}
                       total={totalPages * 10}
                       pageSize={10}
-                      onChange={setPage}
+                      onChange={(newPage) => setPage(newPage)}
                       size="small"
+                      showSizeChanger={false}
                     />
                   </div>
                 )}
