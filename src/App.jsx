@@ -199,7 +199,7 @@ function App() {
             <>
               {isFullscreen && (
                 <div className="pointer-events-none fixed inset-0 z-40">
-                  <div className="pointer-events-auto">
+                  <div>
                     <ResultDisplay
                       latestResult={latestResult}
                       refreshKey={refreshKey}
@@ -270,14 +270,14 @@ function App() {
                         <div className="mt-4 w-full sm:w-auto flex flex-col sm:flex-row gap-3 justify-center">
                           <button
                             type="button"
-                            onClick={() => {}}
+                            onClick={() => { }}
                             className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
                           >
                             Thêm thủ công
                           </button>
                           <button
                             type="button"
-                            onClick={() => {}}
+                            onClick={() => { }}
                             className="px-4 py-2 rounded-md border border-gray-300 text-sm text-slate-700 bg-white hover:bg-gray-50 transition"
                           >
                             Nhập file

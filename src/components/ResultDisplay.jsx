@@ -140,7 +140,7 @@ const ResultDisplay = ({
       if (cachedPage) {
         setResults(cachedPage.results);
         setTotalPages(cachedPage.totalPages);
-        onResultsCountChange?.(cachedPage.results.length ?? 0);
+        onResultsCountChange?.(cachedPage.totalRecords ?? cachedPage.results.length ?? 0);
         return;
       }
     }
@@ -150,13 +150,15 @@ const ResultDisplay = ({
       const response = await resultAPI.getResultsByPage(targetPage, 10);
       if (response.data.success) {
         const fetchedResults = response.data.data;
+        const totalRecords = response.data.pagination?.total_records ?? fetchedResults.length;
+        const totalPagesValue = response.data.pagination?.total_pages ?? 1;
         setResults(fetchedResults);
-        onResultsCountChange?.(fetchedResults.length ?? 0);
-        const totalPagesValue = response.data.pagination.total_pages;
         setTotalPages(totalPagesValue);
+        onResultsCountChange?.(totalRecords);
         pageCacheRef.current[targetPage] = {
           results: fetchedResults,
           totalPages: totalPagesValue,
+          totalRecords,
         };
       }
     } catch (error) {
@@ -231,11 +233,10 @@ const ResultDisplay = ({
     <>
       {contextHolder}
       <div
-        className={`rounded-xl border border-gray-300 bg-white p-4 ${
-          showResultsList
+        className={`rounded-xl border border-gray-300 bg-white p-4 ${showResultsList
             ? ""
             : "pointer-events-none bg-transparent border-0 p-0"
-        }`}
+          }`}
       >
         <Modal
           title={
@@ -356,7 +357,7 @@ const ResultDisplay = ({
           <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-purple-50">
             <div className="mb-4">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-slate-800 text-lg">
+                <h4 className="font-normal text-slate-800 text-lg">
                   Danh sách quay trúng
                 </h4>
               </div>
@@ -376,11 +377,11 @@ const ResultDisplay = ({
                       }}
                     >
                       <div className="flex items-center gap-3 flex-1">
-                        <span className="px-3 py-1 text-sm font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full min-w-12 text-center">
+                        <span className="px-3 py-1 text-sm font-normal bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full min-w-12 text-center">
                           #{(page - 1) * 10 + idx + 1}
                         </span>
                         <div className="flex-1">
-                          <div className="font-semibold text-slate-800 text-base">
+                          <div className="font-normal text-slate-800 text-base">
                             {result.itemName}
                           </div>
                         </div>
@@ -396,18 +397,27 @@ const ResultDisplay = ({
                   ))}
                 </div>
 
-                {totalPages > 1 && (
-                  <div className="mt-4 flex justify-center">
+                <div className="mt-4 flex flex-col items-center gap-3">
+                  <div className="w-full flex justify-center">
                     <Pagination
                       current={page}
-                      total={totalPages * 10}
+                      total={Math.max(1, totalPages) * 10}
                       pageSize={10}
                       onChange={(newPage) => setPage(newPage)}
                       size="small"
                       showSizeChanger={false}
                     />
                   </div>
-                )}
+
+                  <Button
+                    danger
+                    onClick={handleClearAll}
+                    className="w-full max-w-sm"
+                    style={{ backgroundColor: "#ef4444", borderColor: "#dc2626", color: "#ffffff" }}
+                  >
+                    Xóa toàn bộ
+                  </Button>
+                </div>
               </>
             ) : (
               <Empty description="Chưa có lượt quay nào" className="py-8" />

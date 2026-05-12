@@ -121,7 +121,7 @@ const Wheel = ({
     ctx.arc(0, 0, outerRadius, 0, 2 * Math.PI);
     ctx.fillStyle = "#f39c12"; // Orange
     ctx.fill();
-    ctx.lineWidth = Math.max(8, cssSize * 0.03);
+    ctx.lineWidth = Math.max(4, cssSize * 0.02);
     ctx.strokeStyle = "#f39c12";
     ctx.stroke();
 
@@ -130,9 +130,9 @@ const Wheel = ({
     for (let i = 0; i < dotCount; i++) {
       const angle = (i * 2 * Math.PI) / dotCount;
       const dotX =
-        Math.cos(angle) * (outerRadius - Math.max(8, cssSize * 0.02));
+        Math.cos(angle) * (outerRadius - Math.max(6, cssSize * 0.015));
       const dotY =
-        Math.sin(angle) * (outerRadius - Math.max(8, cssSize * 0.02));
+        Math.sin(angle) * (outerRadius - Math.max(6, cssSize * 0.015));
 
       ctx.beginPath();
       ctx.arc(dotX, dotY, Math.max(2, cssSize * 0.008), 0, 2 * Math.PI);
@@ -147,7 +147,7 @@ const Wheel = ({
 
     // Draw inner sectors
     const arc = (2 * Math.PI) / items.length;
-    const innerRadius = outerRadius - Math.max(20, cssSize * 0.06);
+    const innerRadius = outerRadius - Math.max(12, cssSize * 0.045);
 
     for (let i = 0; i < items.length; i++) {
       const angle = currentRotation + i * arc;
@@ -256,14 +256,6 @@ const Wheel = ({
     }
   }, []);
 
-  useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(spinAudio);
-      audioRef.current.preload = "auto";
-      audioRef.current.volume = 0.25;
-    }
-  }, []);
-
   const playSpinAudio = useCallback(() => {
     try {
       if (!audioRef.current) return;
@@ -276,120 +268,115 @@ const Wheel = ({
   }, []);
 
   const stopSpinAudio = useCallback(() => {
-    const stopSpinAudio = useCallback(() => {
-      try {
-        if (!audioRef.current) return;
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      } catch (e) {
-        console.warn("Audio stop failed:", e);
-      }
-    }, []);
-
-    // Ease-in-out-quart animation (from index.html)
-    const easeInOutQuart = (t) => {
-      return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
-    };
-
-    // Calculate target rotation
-    const calculateTargetRotation = useCallback(
-      (selectedIndex) => {
-        const arc = (2 * Math.PI) / items.length;
-        const targetAngle = (3 * Math.PI) / 2 - (selectedIndex * arc + arc / 2);
-
-        let currentMod = currentRotation % (2 * Math.PI);
-        let angleDiff = targetAngle - currentMod;
-        if (angleDiff < 0) angleDiff += 2 * Math.PI;
-
-        const spins = FULL_ROTATIONS * 2 * Math.PI;
-        return angleDiff + spins;
-      },
-      [currentRotation, items.length],
-    );
-
-    // Handle spin (logic from index.html)
-    const handleSpin = async () => {
-      if (localSpinning || items.length === 0) return;
-
-      try {
-        playSpinAudio();
-        setLocalSpinning(true);
-        onSpinStateChange?.(true);
-        lastSegmentRef.current = -1;
-
-        const response = await itemAPI.spinWheel();
-        if (!response.data.success) {
-          throw new Error(response.data.message || "Lỗi khi quay vòng");
-        }
-
-        const selectedItem = response.data.data.item;
-        const selectedIndex = Math.max(
-          0,
-          items.findIndex((item) => item._id === selectedItem._id),
-        );
-        const spinAngle = calculateTargetRotation(selectedIndex);
-
-        // Animate spin with easeInOutQuart
-        return new Promise((resolve) => {
-          const startTime = performance.now();
-          const startRotation = currentRotation;
-
-          const animate = (currentTime) => {
-            const elapsed = currentTime - startTime;
-            let progress = elapsed / SPIN_DURATION;
-
-            if (progress > 1) progress = 1;
-
-            const eased = easeInOutQuart(progress);
-            const newRotation = startRotation + spinAngle * eased;
-
-            setCurrentRotation(newRotation);
-
-            if (progress < 1) {
-              requestAnimationFrame(animate);
-            } else {
-              // Done spinning - ResultDisplay will show the result popup
-              onSpinComplete?.(response.data.data);
-              onSpinStateChange?.(false);
-              setLocalSpinning(false);
-              stopSpinAudio();
-              resolve();
-            }
-          };
-
-          requestAnimationFrame(animate);
-        });
-
-      } catch (error) {
-        console.error("Spin error:", error);
-        notify({
-          type: "error",
-          message: "Lỗi quay vòng",
-          description: error.message || "Có lỗi xảy ra.",
-        });
-        stopSpinAudio();
-        onSpinStateChange?.(false);
-        setLocalSpinning(false);
-      }
-    };
-
-
-    // Draw light bulbs around border (now drawn on canvas, so we can remove the DOM-based bulbs)
-    // const getLightBulbs = () => {
-    //   const count = Math.max(8, items.length);
-    //   const bulbs = [];
-    //   for (let i = 0; i < count; i++) {
-    //     const angle = (i / count) * Math.PI * 2;
-    //     const x = Math.cos(angle) * 180 + 240;
-    //     const y = Math.sin(angle) * 180 + 240;
-    //     bulbs.push({ x, y, angle: (angle * 180) / Math.PI });
-    //   }
-    //   return bulbs;
-    // };
-
-    // const bulbs = getLightBulbs();
-
+    try {
+      if (!audioRef.current) return;
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    } catch (e) {
+      console.warn("Audio stop failed:", e);
+    }
   }, []);
+
+  // Ease-in-out-quart animation (from index.html)
+  const easeInOutQuart = (t) => {
+    return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
+  };
+
+  // Calculate target rotation
+  const calculateTargetRotation = useCallback(
+    (selectedIndex) => {
+      const arc = (2 * Math.PI) / items.length;
+      const targetAngle = (3 * Math.PI) / 2 - (selectedIndex * arc + arc / 2);
+
+      let currentMod = currentRotation % (2 * Math.PI);
+      let angleDiff = targetAngle - currentMod;
+      if (angleDiff < 0) angleDiff += 2 * Math.PI;
+
+      const spins = FULL_ROTATIONS * 2 * Math.PI;
+      return angleDiff + spins;
+    },
+    [currentRotation, items.length],
+  );
+
+  // Handle spin (logic from index.html)
+  const handleSpin = async () => {
+    if (localSpinning || items.length === 0) return;
+
+    try {
+      playSpinAudio();
+      setLocalSpinning(true);
+      onSpinStateChange?.(true);
+      lastSegmentRef.current = -1;
+
+      const response = await itemAPI.spinWheel();
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Lỗi khi quay vòng");
+      }
+
+      const selectedItem = response.data.data.item;
+      const selectedIndex = Math.max(
+        0,
+        items.findIndex((item) => item._id === selectedItem._id),
+      );
+      const spinAngle = calculateTargetRotation(selectedIndex);
+
+      // Animate spin with easeInOutQuart
+      return new Promise((resolve) => {
+        const startTime = performance.now();
+        const startRotation = currentRotation;
+
+        const animate = (currentTime) => {
+          const elapsed = currentTime - startTime;
+          let progress = elapsed / SPIN_DURATION;
+
+          if (progress > 1) progress = 1;
+
+          const eased = easeInOutQuart(progress);
+          const newRotation = startRotation + spinAngle * eased;
+
+          setCurrentRotation(newRotation);
+
+          if (progress < 1) {
+            requestAnimationFrame(animate);
+          } else {
+            // Done spinning - ResultDisplay will show the result popup
+            onSpinComplete?.(response.data.data);
+            onSpinStateChange?.(false);
+            setLocalSpinning(false);
+            stopSpinAudio();
+            resolve();
+          }
+        };
+
+        requestAnimationFrame(animate);
+      });
+    } catch (error) {
+      console.error("Spin error:", error);
+      notify({
+        type: "error",
+        message: "Lỗi quay vòng",
+        description: error.message || "Có lỗi xảy ra.",
+      });
+      stopSpinAudio();
+      onSpinStateChange?.(false);
+      setLocalSpinning(false);
+    }
+  };
+
+  // Draw light bulbs around border (now drawn on canvas, so we can remove the DOM-based bulbs)
+  // const getLightBulbs = () => {
+  //   const count = Math.max(8, items.length);
+  //   const bulbs = [];
+  //   for (let i = 0; i < count; i++) {
+  //     const angle = (i / count) * Math.PI * 2;
+  //     const x = Math.cos(angle) * 180 + 240;
+  //     const y = Math.sin(angle) * 180 + 240;
+  //     bulbs.push({ x, y, angle: (angle * 180) / Math.PI });
+  //   }
+  //   return bulbs;
+  // };
+
+  // const bulbs = getLightBulbs();
   return (
     <>
       {contextHolder}
@@ -429,22 +416,16 @@ const Wheel = ({
 
         {/* Wheel container */}
         <div className="relative z-10 flex flex-col items-center justify-center">
-          <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-            <div
-              className="w-0 h-0 border-l-transparent border-r-transparent border-t-yellow-300 drop-shadow-2xl"
-              style={{
-                borderLeftWidth: "28px",
-                borderRightWidth: "28px",
-                borderTopWidth: "56px",
-                filter: "drop-shadow(0 0 8px rgba(255, 235, 59, 0.8))",
-              }}
-            />
-          </div>
-
           <div
             className="relative"
             style={{ width: `${size}px`, height: `${size}px` }}
           >
+            <div className="absolute left-1/2 top-[-30px] -translate-x-1/2 z-20 pointer-events-none">
+              <div
+                className="w-0 h-0 border-l-[28px] border-r-[28px] border-t-[58px] border-l-transparent border-r-transparent border-t-yellow-300"
+                style={{ filter: "drop-shadow(0 0 20px rgba(253, 224, 71, 0.95))" }}
+              />
+            </div>
             <div className="w-full h-full rounded-full overflow-hidden wheel-outer-shadow shadow-2xl">
               <canvas
                 ref={canvasRef}
@@ -455,9 +436,9 @@ const Wheel = ({
             <button
               onClick={handleSpin}
               disabled={localSpinning || items.length === 0}
-              className={`absolute inset-1/2 w-28 h-28 md:w-32 md:h-32 -translate-x-1/2 -translate-y-1/2 rounded-full border-[5px] border-white font-bold text-2xl md:text-3xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${localSpinning || items.length === 0
+              className={`absolute top-1/2 left-1/2 w-28 h-28 md:w-32 md:h-32 -translate-x-1/2 -translate-y-1/2 rounded-full border-[5px] border-white font-bold text-2xl md:text-3xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${localSpinning || items.length === 0
                 ? "cursor-not-allowed"
-                : "hover:bg-red-600 active:scale-95 cursor-pointer"
+                : "hover:bg-red-600 active:scale-95 "
                 }`}
               style={{
                 backgroundColor:
