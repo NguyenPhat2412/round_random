@@ -90,7 +90,8 @@ const Wheel = ({
     const canvas = canvasRef.current;
     if (!canvas || !items.length) return;
 
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const dpr =
+      typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
     const cssSize = pixelSize;
 
     // set actual canvas pixel size for crisp rendering
@@ -126,8 +127,10 @@ const Wheel = ({
     const dotCount = 30;
     for (let i = 0; i < dotCount; i++) {
       const angle = (i * 2 * Math.PI) / dotCount;
-      const dotX = Math.cos(angle) * (outerRadius - Math.max(8, cssSize * 0.02));
-      const dotY = Math.sin(angle) * (outerRadius - Math.max(8, cssSize * 0.02));
+      const dotX =
+        Math.cos(angle) * (outerRadius - Math.max(8, cssSize * 0.02));
+      const dotY =
+        Math.sin(angle) * (outerRadius - Math.max(8, cssSize * 0.02));
 
       ctx.beginPath();
       ctx.arc(dotX, dotY, Math.max(2, cssSize * 0.008), 0, 2 * Math.PI);
@@ -449,10 +452,7 @@ const Wheel = ({
             style={{ width: `${size}px`, height: `${size}px` }}
           >
             <div className="absolute inset-0 rounded-full overflow-hidden">
-              <canvas
-                ref={canvasRef}
-                className="w-full h-full rounded-full"
-              />
+              <canvas ref={canvasRef} className="w-full h-full rounded-full" />
             </div>
 
             <button

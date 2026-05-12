@@ -214,7 +214,9 @@ function App() {
               )}
 
               {/* Content Grid */}
-              <div className={`flex-1 grid gap-4 ${isFullscreen ? "place-items-center" : "grid-cols-1 lg:grid-cols-[280px_1fr]"}`}>
+              <div
+                className={`flex-1 grid gap-4 ${isFullscreen ? "place-items-center" : "grid-cols-1 lg:grid-cols-[280px_1fr]"}`}
+              >
                 {/* Left Sidebar (keeps first column) */}
                 {!isFullscreen && (
                   <div className="w-full border-r border-gray-200 bg-white overflow-y-auto shadow-md">
@@ -233,10 +235,17 @@ function App() {
                 )}
 
                 {/* Main Wheel Area */}
-                <div className={`${isFullscreen ? "w-full h-full" : "w-full h-full"} flex items-center justify-center`}> 
+                <div
+                  className={`${isFullscreen ? "w-full h-full" : "w-full h-full"} flex items-center justify-center`}
+                >
                   {items.length > 0 ? (
-                    <div className={`flex items-center justify-center ${isFullscreen ? "w-full h-full bg-transparent" : "w-full h-full"}`}>
-                      <div className="w-full max-w-[100%]" style={{display: 'grid', placeItems: 'center'}}>
+                    <div
+                      className={`flex items-center justify-center ${isFullscreen ? "w-full h-full bg-transparent" : "w-full h-full"}`}
+                    >
+                      <div
+                        className="w-full max-w-[100%]"
+                        style={{ display: "grid", placeItems: "center" }}
+                      >
                         <Wheel
                           items={items}
                           isSpinning={isSpinning}
