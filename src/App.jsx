@@ -111,6 +111,7 @@ function App() {
   };
 
   const handleImportSuccess = (importedItems) => {
+    // Backend handles deactivation of items not in import
     setItems(importedItems);
     triggerRefresh();
   };

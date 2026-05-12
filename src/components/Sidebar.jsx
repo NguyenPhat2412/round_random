@@ -61,7 +61,7 @@ const Sidebar = ({
   const { notify, contextHolder } = useNotification();
   const { pointerColor } = useContext(ColorContext);
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     // Save manual list to localStorage as "last manual list"
     localStorage.setItem("lastManualList", textValue);
 
@@ -74,6 +74,25 @@ const Sidebar = ({
       icon: "🎁",
       isActive: true,
     }));
+
+    // Find items to deactivate (in current items but not in new list)
+    const newNames = new Set(names.map((n) => n.toLowerCase().trim()));
+    const itemsToDeactivate = items.filter(
+      (item) => !newNames.has(item.name?.toLowerCase().trim()),
+    );
+
+    // Deactivate items that are no longer in the list
+    if (itemsToDeactivate.length > 0) {
+      try {
+        const { itemAPI } = await import("../services/api");
+        await itemAPI.deactivateItems(
+          itemsToDeactivate.map((item) => item._id),
+        );
+      } catch (err) {
+        console.error("Error deactivating items:", err);
+      }
+    }
+
     onManualUpdate(newItems);
     notify({
       type: "success",

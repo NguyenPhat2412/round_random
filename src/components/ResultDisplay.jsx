@@ -18,6 +18,7 @@ const ResultDisplay = ({
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
+  const [itemIsActive, setItemIsActive] = useState(true);
   const hasPlayedAudioRef = useRef(false);
   const hasTriggeredFireworksRef = useRef(false);
   const shownResultKeyRef = useRef(null);
@@ -42,7 +43,20 @@ const ResultDisplay = ({
 
     shownResultKeyRef.current = latestResultKey;
     setShowModal(true);
-  }, [latestResultKey]);
+
+    // Fetch latest item status to check if it's still active
+    const itemId = latestResult?.item?._id;
+    if (itemId) {
+      itemAPI
+        .getItemById(itemId)
+        .then((response) => {
+          if (response.data.success) {
+            setItemIsActive(response.data.data.isActive !== false);
+          }
+        })
+        .catch((err) => console.error("Error fetching item status:", err));
+    }
+  }, [latestResultKey, latestResult]);
 
   useEffect(() => {
     if (!showModal || !latestResult) {
@@ -120,6 +134,7 @@ const ResultDisplay = ({
       fireworksTimerRef.current = null;
     }
     setShowModal(false);
+    setItemIsActive(true); // Reset when modal closes
   };
 
   const fetchResults = async () => {
@@ -285,9 +300,13 @@ const ResultDisplay = ({
                 <Button
                   danger
                   onClick={handleModalDelete}
+                  disabled={!itemIsActive}
                   className="font-bold !bg--red600 !border-red-600 !text-white hover:!bg-red-700 hover:!border-red-700 !shadow-lg"
                   type="primary"
                   style={{ animation: "buttonPop 0.45s ease-out" }}
+                  title={
+                    !itemIsActive ? "Mục này đã bị vô hiệu hóa" : "Xóa mục này"
+                  }
                 >
                   Xóa ô này
                 </Button>

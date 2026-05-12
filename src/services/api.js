@@ -13,10 +13,16 @@ const apiClient = axios.create({
 // Item API calls
 export const itemAPI = {
   getAllItems: () => apiClient.get("/items"),
+  getItemById: (id) => apiClient.get(`/items/${id}`),
   addItem: (itemData) => apiClient.post("/items", itemData),
   updateItem: (id, itemData) => apiClient.put(`/items/${id}`, itemData),
   deleteItem: (id) => apiClient.delete(`/items/${id}`),
   spinWheel: () => apiClient.post("/items/spin/wheel"),
+  // Deactivate items by IDs
+  deactivateItems: (itemIds) =>
+    Promise.all(
+      itemIds.map((id) => apiClient.put(`/items/${id}`, { isActive: false })),
+    ),
 };
 
 // Result API calls
