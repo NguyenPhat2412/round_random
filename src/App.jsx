@@ -46,7 +46,6 @@ function App() {
     previousFullscreenRef.current = isFullscreen;
   }, [isFullscreen]);
 
-  // responsive wheel size based on viewport and layout
   useEffect(() => {
     const update = () => {
       const vw = window.innerWidth;
@@ -168,11 +167,10 @@ function App() {
   return (
     <ColorProvider>
       <div
-        className={`h-screen w-screen flex flex-col text-slate-800 overflow-hidden ${
-          isFullscreen
+        className={`h-screen w-screen flex flex-col text-slate-800 overflow-hidden ${isFullscreen
             ? "bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.14),_transparent_28%),linear-gradient(180deg,_#0b1220_0%,_#111827_52%,_#0f172a_100%)]"
             : "bg-slate-50"
-        }`}
+          }`}
       >
         {contextHolder}
         {!isFullscreen && (
