@@ -30,11 +30,11 @@ const Login = () => {
 
       if (response.data.success) {
         setSuccess(response.data.message);
-        // Save user info to localStorage
-        localStorage.setItem(
-          "user",
-          JSON.stringify(response.data.user)
-        );
+        // Save user info and token to localStorage
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        if (response.data.token) {
+          localStorage.setItem("token", response.data.token);
+        }
         // Redirect after 1.5 seconds
         setTimeout(() => {
           navigate("/");
@@ -43,7 +43,7 @@ const Login = () => {
     } catch (err) {
       console.error("Login error:", err);
       setError(
-        err.response?.data?.message || "Lỗi đăng nhập. Vui lòng thử lại."
+        err.response?.data?.message || "Lỗi đăng nhập. Vui lòng thử lại.",
       );
     } finally {
       setLoading(false);
@@ -121,12 +121,12 @@ const Login = () => {
               loading={loading}
               className="login-button"
             >
-              {loading ? "Đang xử lý..." : "Đăng nhập / Đăng ký"}
+              {loading ? "Đang xử lý..." : "Đăng nhập"}
             </Button>
           </form>
 
           <div className="login-info">
-            <p>💡 Đăng nhập lần đầu sẽ tự động tạo tài khoản mới</p>
+            <p>💡 Chỉ tài khoản được cấp quyền mới có thể đăng nhập.</p>
           </div>
         </Card>
       </div>

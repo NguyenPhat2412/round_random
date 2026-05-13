@@ -9,32 +9,30 @@ import React, {
 import { ColorContext } from "../contexts/ColorContext";
 import { itemAPI } from "../services/api";
 import useNotification from "../hooks/useNotification";
-import { pickReadableTextColor } from "../utils/colorUtils";
 import ConstellationBackground from "./ConstellationBackground";
 import spinAudio from "../../audio/audio.mp3";
 
 const FULL_ROTATIONS = 12;
-const SPIN_DURATION = 15000; // 15 giây
-const AUTO_SPIN_SPEED = 0.0015; // Tốc độ quay tự động
+const SPIN_DURATION = 15000;
+const AUTO_SPIN_SPEED = 0.0015;
 
-// Fixed vibrant colors
 const FIXED_COLORS = [
-  "#f44336", // red
-  "#e91e63", // pink
-  "#9c27b0", // purple
-  "#673ab7", // deep purple
-  "#3f51b5", // indigo
-  "#2196f3", // blue
-  "#03a9f4", // light blue
-  "#00bcd4", // cyan
-  "#009688", // teal
-  "#4caf50", // green
-  "#8bc34a", // light green
-  "#cddc39", // lime
-  "#ffeb3b", // yellow
-  "#ffc107", // amber
-  "#ff9800", // orange
-  "#ff5722", // deep orange
+  "#f44336",
+  "#e91e63",
+  "#9c27b0",
+  "#673ab7",
+  "#3f51b5",
+  "#2196f3",
+  "#03a9f4",
+  "#00bcd4",
+  "#009688",
+  "#4caf50",
+  "#8bc34a",
+  "#cddc39",
+  "#ffeb3b",
+  "#ffc107",
+  "#ff9800",
+  "#ff5722",
 ];
 
 const Wheel = ({
@@ -52,12 +50,9 @@ const Wheel = ({
   const [localSpinning, setLocalSpinning] = useState(false);
   const [currentRotation, setCurrentRotation] = useState(0);
   const lastSegmentRef = useRef(-1);
-  const audioRef = useRef(null);
+  const spinAudioPoolRef = useRef([]);
+  const spinAudioIndexRef = useRef(0);
   const { notify, contextHolder } = useNotification();
-
-  const sliceAngle = useMemo(() => {
-    return items.length ? 360 / items.length : 0;
-  }, [items.length]);
 
   const sectorColors = useMemo(() => {
     return items.map((_, index) => FIXED_COLORS[index % FIXED_COLORS.length]);
@@ -78,16 +73,14 @@ const Wheel = ({
     return sectorColors[segmentIndex] || "#ef4444";
   }, [currentRotation, items.length, sectorColors]);
 
-  // Update shared pointer color in context when it changes
   useEffect(() => {
     try {
       setPointerColor?.(currentPointerColor);
-    } catch (e) { }
+    } catch {
+      // noop
+    }
   }, [currentPointerColor, setPointerColor]);
 
-  // Remove old particles useMemo - using ConstellationBackground component instead
-
-  // Draw canvas with pie slices (logic from index.html)
   const drawWheel = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !items.length) return;
@@ -96,7 +89,6 @@ const Wheel = ({
       typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
     const cssSize = pixelSize;
 
-    // set actual canvas pixel size for crisp rendering
     canvas.width = Math.round(cssSize * dpr);
     canvas.height = Math.round(cssSize * dpr);
     canvas.style.width = `${cssSize}px`;
@@ -111,21 +103,18 @@ const Wheel = ({
 
     ctx.clearRect(0, 0, cssSize, cssSize);
 
-    // Save context and rotate by currentRotation
     ctx.save();
     ctx.translate(centerX, centerY);
     ctx.rotate(currentRotation);
 
-    // Draw outer ring (vòng ngoài quay được)
     ctx.beginPath();
     ctx.arc(0, 0, outerRadius, 0, 2 * Math.PI);
-    ctx.fillStyle = "#f39c12"; // Orange
+    ctx.fillStyle = "#f39c12";
     ctx.fill();
     ctx.lineWidth = Math.max(4, cssSize * 0.02);
     ctx.strokeStyle = "#f39c12";
     ctx.stroke();
 
-    // Draw 30 yellow dots around outer ring
     const dotCount = 30;
     for (let i = 0; i < dotCount; i++) {
       const angle = (i * 2 * Math.PI) / dotCount;
@@ -145,7 +134,6 @@ const Wheel = ({
 
     ctx.restore();
 
-    // Draw inner sectors
     const arc = (2 * Math.PI) / items.length;
     const innerRadius = outerRadius - Math.max(12, cssSize * 0.045);
 
@@ -162,7 +150,6 @@ const Wheel = ({
       ctx.lineWidth = Math.max(1, cssSize * 0.0025);
       ctx.stroke();
 
-      // Draw text
       ctx.save();
       ctx.translate(centerX, centerY);
       ctx.rotate(angle + arc / 2);
@@ -172,12 +159,11 @@ const Wheel = ({
       ctx.shadowBlur = Math.max(2, cssSize * 0.006);
 
       const label = (items[i].name || "").slice(0, 25);
-      const maxWidth = innerRadius - 40; // Max width for text
+      const maxWidth = innerRadius - 40;
       let fontSize = Math.max(10, Math.floor(cssSize * 0.036));
       ctx.font = `normal ${fontSize}px Roboto, sans-serif`;
       let textWidth = ctx.measureText(label).width;
 
-      // Auto-shrink text if too long
       while (textWidth > maxWidth && fontSize > 8) {
         fontSize -= 1;
         ctx.font = `normal ${fontSize}px Roboto, sans-serif`;
@@ -188,18 +174,20 @@ const Wheel = ({
       ctx.restore();
     }
 
-    // Track current segment for rotation logic
     let currentSegment = Math.floor(
       (((3 * Math.PI) / 2 - currentRotation) / arc) % items.length,
     );
     if (currentSegment < 0) currentSegment += items.length;
 
-    if (currentSegment !== lastSegmentRef.current && localSpinning && items.length > 0) {
+    if (
+      currentSegment !== lastSegmentRef.current &&
+      localSpinning &&
+      items.length > 0
+    ) {
       lastSegmentRef.current = currentSegment;
     }
   }, [items, sectorColors, currentRotation, localSpinning, pixelSize]);
 
-  // Setup canvas on mount and resize
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -213,7 +201,7 @@ const Wheel = ({
     });
 
     ro.observe(container);
-    // initial
+
     const cw = Math.floor(container.clientWidth) || Math.floor(size);
     const maxAllowed = Math.floor(Math.min(size, window.innerWidth - 32));
     setPixelSize(Math.max(200, Math.min(cw, maxAllowed)));
@@ -221,17 +209,27 @@ const Wheel = ({
     return () => {
       try {
         ro.disconnect();
-      } catch (e) { }
+      } catch {
+        // noop
+      }
     };
-  }, [drawWheel, size]);
+  }, [size]);
 
-  // Redraw when rotation changes
   useEffect(() => {
     drawWheel();
   }, [currentRotation, drawWheel]);
 
-  // Auto-spin loop (tạo hiệu ứng quay liên tục khi idle)
   useEffect(() => {
+    let timeoutId;
+    if (isSpinning) {
+      timeoutId = setTimeout(() => {
+        if (isSpinning) {
+          setLocalSpinning(false);
+          onSpinStateChange?.(false);
+        }
+      }, 10000);
+    }
+
     let animFrameId;
 
     const autoSpinLoop = () => {
@@ -244,24 +242,50 @@ const Wheel = ({
     animFrameId = requestAnimationFrame(autoSpinLoop);
 
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       if (animFrameId) cancelAnimationFrame(animFrameId);
     };
-  }, [localSpinning, items.length]);
+  }, [isSpinning, localSpinning, items.length, onSpinStateChange]);
 
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(spinAudio);
-      audioRef.current.preload = "auto";
-      audioRef.current.volume = 0.25;
-    }
+    // Preload multiple players so first spin and repeated spins play instantly.
+    const players = Array.from({ length: 2 }, () => {
+      const audio = new Audio(spinAudio);
+      audio.preload = "auto";
+      audio.volume = 0.25;
+      audio.load();
+      return audio;
+    });
+
+    spinAudioPoolRef.current = players;
+
+    return () => {
+      players.forEach((player) => {
+        try {
+          player.pause();
+          player.src = "";
+        } catch {
+          // noop
+        }
+      });
+      spinAudioPoolRef.current = [];
+    };
   }, []);
 
   const playSpinAudio = useCallback(() => {
     try {
-      if (!audioRef.current) return;
-      audioRef.current.currentTime = 0;
-      audioRef.current.volume = 0.25;
-      audioRef.current.play().catch(() => { });
+      const players = spinAudioPoolRef.current;
+      if (!players.length) return;
+
+      spinAudioIndexRef.current =
+        (spinAudioIndexRef.current + 1) % players.length;
+      const player = players[spinAudioIndexRef.current];
+      player.currentTime = 0;
+      player.volume = 0.25;
+      const playPromise = player.play();
+      if (playPromise) {
+        playPromise.catch(() => {});
+      }
     } catch (e) {
       console.warn("Audio playback failed:", e);
     }
@@ -269,20 +293,19 @@ const Wheel = ({
 
   const stopSpinAudio = useCallback(() => {
     try {
-      if (!audioRef.current) return;
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      spinAudioPoolRef.current.forEach((player) => {
+        player.pause();
+        player.currentTime = 0;
+      });
     } catch (e) {
       console.warn("Audio stop failed:", e);
     }
   }, []);
 
-  // Ease-in-out-quart animation (from index.html)
   const easeInOutQuart = (t) => {
     return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
   };
 
-  // Calculate target rotation
   const calculateTargetRotation = useCallback(
     (selectedIndex) => {
       const arc = (2 * Math.PI) / items.length;
@@ -298,7 +321,6 @@ const Wheel = ({
     [currentRotation, items.length],
   );
 
-  // Handle spin (logic from index.html)
   const handleSpin = async () => {
     if (localSpinning || items.length === 0) return;
 
@@ -320,7 +342,6 @@ const Wheel = ({
       );
       const spinAngle = calculateTargetRotation(selectedIndex);
 
-      // Animate spin with easeInOutQuart
       return new Promise((resolve) => {
         const startTime = performance.now();
         const startRotation = currentRotation;
@@ -339,7 +360,6 @@ const Wheel = ({
           if (progress < 1) {
             requestAnimationFrame(animate);
           } else {
-            // Done spinning - ResultDisplay will show the result popup
             onSpinComplete?.(response.data.data);
             onSpinStateChange?.(false);
             setLocalSpinning(false);
@@ -363,34 +383,22 @@ const Wheel = ({
     }
   };
 
-  // Draw light bulbs around border (now drawn on canvas, so we can remove the DOM-based bulbs)
-  // const getLightBulbs = () => {
-  //   const count = Math.max(8, items.length);
-  //   const bulbs = [];
-  //   for (let i = 0; i < count; i++) {
-  //     const angle = (i / count) * Math.PI * 2;
-  //     const x = Math.cos(angle) * 180 + 240;
-  //     const y = Math.sin(angle) * 180 + 240;
-  //     bulbs.push({ x, y, angle: (angle * 180) / Math.PI });
-  //   }
-  //   return bulbs;
-  // };
-
-  // const bulbs = getLightBulbs();
   return (
     <>
       {contextHolder}
       <div
         ref={containerRef}
         className="relative w-full h-full overflow-hidden flex items-center justify-center"
-        style={!isFullscreen ? {
-          backgroundImage: `conic-gradient(from 90deg, rgb(223, 48, 0) 0deg, rgb(223, 48, 0) 27.692deg, rgb(254, 96, 0) 27.692deg, rgb(254, 96, 0) 55.385deg, rgb(255, 145, 37) 55.385deg, rgb(255, 145, 37) 83.077deg, rgb(251, 187, 95) 83.077deg, rgb(251, 187, 95) 110.769deg, rgb(218, 217, 154) 110.769deg, rgb(218, 217, 154) 138.462deg, rgb(169, 230, 202) 138.462deg, rgb(169, 230, 202) 166.154deg, rgb(114, 224, 232) 166.154deg, rgb(114, 224, 232) 193.846deg, rgb(62, 201, 236) 193.846deg, rgb(62, 201, 236) 221.538deg, rgb(20, 163, 214) 221.538deg, rgb(20, 163, 214) 249.231deg, rgb(0, 116, 171) 249.231deg, rgb(0, 116, 171) 276.923deg, rgb(0, 67, 115) 276.923deg, rgb(0, 67, 115) 304.615deg, rgb(18, 22, 55) 304.615deg, rgb(18, 22, 55) 332.308deg, rgb(58, 0, 5) 332.308deg, rgb(58, 0, 5) 360deg)`,
-        } : {}}
+        style={
+          !isFullscreen
+            ? {
+                backgroundImage: `conic-gradient(from 90deg, rgb(223, 48, 0) 0deg, rgb(223, 48, 0) 27.692deg, rgb(254, 96, 0) 27.692deg, rgb(254, 96, 0) 55.385deg, rgb(255, 145, 37) 55.385deg, rgb(255, 145, 37) 83.077deg, rgb(251, 187, 95) 83.077deg, rgb(251, 187, 95) 110.769deg, rgb(218, 217, 154) 110.769deg, rgb(218, 217, 154) 138.462deg, rgb(169, 230, 202) 138.462deg, rgb(169, 230, 202) 166.154deg, rgb(114, 224, 232) 166.154deg, rgb(114, 224, 232) 193.846deg, rgb(62, 201, 236) 193.846deg, rgb(62, 201, 236) 221.538deg, rgb(20, 163, 214) 221.538deg, rgb(20, 163, 214) 249.231deg, rgb(0, 116, 171) 249.231deg, rgb(0, 116, 171) 276.923deg, rgb(0, 67, 115) 276.923deg, rgb(0, 67, 115) 304.615deg, rgb(18, 22, 55) 304.615deg, rgb(18, 22, 55) 332.308deg, rgb(58, 0, 5) 332.308deg, rgb(58, 0, 5) 360deg)`,
+              }
+            : {}
+        }
       >
-        {/* Constellation Background Component */}
         <ConstellationBackground />
 
-        {/* Radial rays effect */}
         <svg
           className="absolute inset-0 w-full h-full pointer-events-none"
           style={{ filter: "opacity(0.3)", zIndex: 1 }}
@@ -414,7 +422,6 @@ const Wheel = ({
           })}
         </svg>
 
-        {/* Wheel container */}
         <div className="relative z-10 flex flex-col items-center justify-center">
           <div
             className="relative"
@@ -423,7 +430,9 @@ const Wheel = ({
             <div className="absolute left-1/2 top-[-30px] -translate-x-1/2 z-20 pointer-events-none">
               <div
                 className="w-0 h-0 border-l-[28px] border-r-[28px] border-t-[58px] border-l-transparent border-r-transparent border-t-yellow-300"
-                style={{ filter: "drop-shadow(0 0 20px rgba(253, 224, 71, 0.95))" }}
+                style={{
+                  filter: "drop-shadow(0 0 20px rgba(253, 224, 71, 0.95))",
+                }}
               />
             </div>
             <div className="w-full h-full rounded-full overflow-hidden wheel-outer-shadow shadow-2xl">
@@ -436,15 +445,14 @@ const Wheel = ({
             <button
               onClick={handleSpin}
               disabled={localSpinning || items.length === 0}
-              className={`absolute top-1/2 left-1/2 w-28 h-28 md:w-32 md:h-32 -translate-x-1/2 -translate-y-1/2 rounded-full border-[5px] border-white font-bold text-2xl md:text-3xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${localSpinning || items.length === 0
-                ? "cursor-not-allowed"
-                : "hover:bg-red-600 active:scale-95 "
-                }`}
+              className={`absolute top-1/2 left-1/2 w-28 h-28 md:w-32 md:h-32 -translate-x-1/2 -translate-y-1/2 rounded-full border-[5px] border-white font-bold text-2xl md:text-3xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${
+                localSpinning || items.length === 0
+                  ? "cursor-not-allowed"
+                  : "hover:bg-red-600 active:scale-95 "
+              }`}
               style={{
                 backgroundColor:
-                  items.length === 0
-                    ? "#9ca3af"
-                    : "var(--pointer-color)",
+                  items.length === 0 ? "#9ca3af" : "var(--pointer-color)",
                 boxShadow: `0 0 0 4px rgba(255,255,255,0.35), 0 8px 22px var(--pointer-color, #ef4444)66`,
                 opacity: 1,
               }}
@@ -456,5 +464,6 @@ const Wheel = ({
       </div>
     </>
   );
-}
+};
+
 export default Wheel;

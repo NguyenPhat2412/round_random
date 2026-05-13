@@ -5,7 +5,7 @@ import { generateDistinctColors } from "../utils/colorUtils";
 import { Button, Modal, Input, Space } from "antd";
 import useNotification from "../hooks/useNotification";
 import { ColorContext } from "../contexts/ColorContext";
-import { itemAPI } from "../services/api";
+import { itemAPI, savedListAPI } from "../services/api";
 
 const Sidebar = ({
   items,
@@ -16,16 +16,14 @@ const Sidebar = ({
   refreshKey,
   onDataChanged,
   showResultDisplay = true,
+  isAuthenticated = false,
+  currentUser = null,
+  onLoginClick,
+  onLogout,
 }) => {
   const [activeTab, setActiveTab] = useState("items");
   const [resultsCount, setResultsCount] = useState(0);
-  const [savedLists, setSavedLists] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("savedLists") || "[]");
-    } catch {
-      return [];
-    }
-  });
+  const [savedLists, setSavedLists] = useState([]);
   const [showSavedModal, setShowSavedModal] = useState(false);
   const [isAddingSavedList, setIsAddingSavedList] = useState(false);
   const [newSavedListName, setNewSavedListName] = useState("");
@@ -73,7 +71,43 @@ const Sidebar = ({
   const { notify, contextHolder } = useNotification();
   const { pointerColor } = useContext(ColorContext);
 
+  const requireEditPermission = () => {
+    if (isAuthenticated) return true;
+
+    notify({
+      type: "warning",
+      message: "Bạn cần đăng nhập",
+      description: "Đăng nhập để chỉnh sửa danh sách và xóa kết quả.",
+    });
+    onLoginClick?.();
+    return false;
+  };
+
+  const fetchSavedLists = async ({ showError = false } = {}) => {
+    try {
+      const response = await savedListAPI.getAllSavedLists();
+      if (response.data.success) {
+        setSavedLists(response.data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching saved lists:", error);
+      if (showError) {
+        notify({
+          type: "error",
+          message: "Không tải được danh sách đã lưu",
+          description: error.response?.data?.message || error.message,
+        });
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    fetchSavedLists();
+  }, []);
+
   const handleUpdate = async () => {
+    if (!requireEditPermission()) return;
+
     // Save manual list to localStorage as "last manual list"
     localStorage.setItem("lastManualList", textValue);
 
@@ -132,7 +166,7 @@ const Sidebar = ({
       notify({
         type: "success",
         message: "Cập nhật vòng quay",
-        description: `Đã lưu ${names.length} mục trên server.`,
+        description: `Đã lưu ${names.length} mục trên hệ thống.`,
       });
     } catch (err) {
       console.error("Error updating manual list:", err);
@@ -145,8 +179,11 @@ const Sidebar = ({
   };
 
   const handleOpenSavedLists = () => {
+    if (!requireEditPermission()) return;
+
     setShowSavedModal(true);
     setIsAddingSavedList(false);
+    fetchSavedLists({ showError: true });
   };
 
   const handleCloseSavedModal = () => {
@@ -157,12 +194,16 @@ const Sidebar = ({
   };
 
   const handleStartAddSavedList = () => {
+    if (!requireEditPermission()) return;
+
     setIsAddingSavedList(true);
     setNewSavedListName("");
     setNewSavedListText("");
   };
 
-  const handleSaveSavedList = () => {
+  const handleSaveSavedList = async () => {
+    if (!requireEditPermission()) return;
+
     const name = newSavedListName.trim();
     const content = newSavedListText.trim();
     if (!name) {
@@ -184,23 +225,24 @@ const Sidebar = ({
       return;
     }
 
-    const existing = savedLists.some((list) => list.name === name);
-    const updatedLists = existing
-      ? savedLists.map((list) =>
-          list.name === name ? { ...list, items: listItems } : list,
-        )
-      : [...savedLists, { name, items: listItems }];
-
-    localStorage.setItem("savedLists", JSON.stringify(updatedLists));
-    setSavedLists(updatedLists);
-    notify({
-      type: "success",
-      message: "Đã lưu danh sách",
-      description: `Danh sách "${name}" đã được lưu.`,
-    });
-    setIsAddingSavedList(false);
-    setNewSavedListName("");
-    setNewSavedListText("");
+    try {
+      await savedListAPI.upsertSavedList({ name, items: listItems });
+      await fetchSavedLists();
+      notify({
+        type: "success",
+        message: "Đã lưu danh sách",
+        description: `Danh sách "${name}" đã được lưu.`,
+      });
+      setIsAddingSavedList(false);
+      setNewSavedListName("");
+      setNewSavedListText("");
+    } catch (error) {
+      notify({
+        type: "error",
+        message: "Lưu danh sách thất bại",
+        description: error.response?.data?.message || error.message,
+      });
+    }
   };
 
   const handleCancelAddSavedList = () => {
@@ -210,6 +252,8 @@ const Sidebar = ({
   };
 
   const handleUseSavedList = (list) => {
+    if (!requireEditPermission()) return;
+
     setTextValue(list.items.join("\n"));
     notify({
       type: "success",
@@ -219,14 +263,25 @@ const Sidebar = ({
     setShowSavedModal(false);
   };
 
-  const handleDeleteSavedList = (name) => {
-    const filtered = savedLists.filter((list) => list.name !== name);
-    localStorage.setItem("savedLists", JSON.stringify(filtered));
-    setSavedLists(filtered);
-    notify({ type: "success", message: `Đã xóa danh sách "${name}"` });
+  const handleDeleteSavedList = async (list) => {
+    if (!requireEditPermission()) return;
+
+    try {
+      await savedListAPI.deleteSavedList(list._id);
+      setSavedLists((prev) => prev.filter((saved) => saved._id !== list._id));
+      notify({ type: "success", message: `Đã xóa danh sách "${list.name}"` });
+    } catch (error) {
+      notify({
+        type: "error",
+        message: "Xóa danh sách thất bại",
+        description: error.response?.data?.message || error.message,
+      });
+    }
   };
 
   const shuffleList = () => {
+    if (!requireEditPermission()) return;
+
     const arr = [...names];
     arr.sort(() => Math.random() - 0.5);
     setTextValue(arr.join("\n"));
@@ -234,12 +289,16 @@ const Sidebar = ({
   };
 
   const sortAZ = () => {
+    if (!requireEditPermission()) return;
+
     const arr = [...names].sort((a, b) => a.localeCompare(b));
     setTextValue(arr.join("\n"));
     notify({ type: "open", message: "Đã sắp xếp A→Z" });
   };
 
   const clearList = () => {
+    if (!requireEditPermission()) return;
+
     Modal.confirm({
       title: "Xác nhận xoá",
       content: "Bạn có chắc muốn xóa toàn bộ danh sách?",
@@ -254,6 +313,8 @@ const Sidebar = ({
   };
 
   const resetList = () => {
+    if (!requireEditPermission()) return;
+
     if (
       !initialSnapshot ||
       (Array.isArray(initialSnapshot) && initialSnapshot.length === 0)
@@ -292,17 +353,23 @@ const Sidebar = ({
           onItemDeleted={onItemDeleted}
           showResultsList={activeTab === "results"}
           onResultsCountChange={setResultsCount}
+          canManageResults={isAuthenticated}
         />
       )}
 
       {activeTab === "items" ? (
-        <div className="tab-content">
+        <div className="tab-content flex-1">
           <div className="toolbar">
             <Space wrap>
-              <Button onClick={shuffleList}>🔀 Trộn</Button>
-              <Button onClick={sortAZ}>🔤 A đến Z</Button>
+              <Button onClick={shuffleList} disabled={!isAuthenticated}>
+                🔀 Trộn
+              </Button>
+              <Button onClick={sortAZ} disabled={!isAuthenticated}>
+                🔤 A đến Z
+              </Button>
               <Button
                 onClick={handleOpenSavedLists}
+                disabled={!isAuthenticated}
                 style={{
                   backgroundColor: "#8bc34a",
                   borderColor: "#8bc34a",
@@ -315,7 +382,10 @@ const Sidebar = ({
           </div>
 
           <div className="px-4 py-2">
-            <ImportExcel onImportSuccess={onImportSuccess} />
+            <ImportExcel
+              onImportSuccess={onImportSuccess}
+              disabled={!isAuthenticated}
+            />
           </div>
 
           <Modal
@@ -330,7 +400,7 @@ const Sidebar = ({
                   {savedLists.length > 0 ? (
                     savedLists.map((list) => (
                       <div
-                        key={list.name}
+                        key={list._id || list.name}
                         className="flex items-center justify-between gap-2 mb-2"
                       >
                         <span>{list.name}</span>
@@ -344,7 +414,7 @@ const Sidebar = ({
                           <Button
                             size="small"
                             danger
-                            onClick={() => handleDeleteSavedList(list.name)}
+                            onClick={() => handleDeleteSavedList(list)}
                           >
                             Xóa
                           </Button>
@@ -366,15 +436,21 @@ const Sidebar = ({
                   value={newSavedListName}
                   onChange={(e) => setNewSavedListName(e.target.value)}
                   className="mb-3"
+                  disabled={!isAuthenticated}
                 />
                 <Input.TextArea
                   placeholder="Nhập danh sách lớp ở đây..."
                   value={newSavedListText}
                   onChange={(e) => setNewSavedListText(e.target.value)}
                   rows={6}
+                  disabled={!isAuthenticated}
                 />
                 <Space className="mt-3">
-                  <Button type="primary" onClick={handleSaveSavedList}>
+                  <Button
+                    type="primary"
+                    onClick={handleSaveSavedList}
+                    disabled={!isAuthenticated}
+                  >
                     Thêm
                   </Button>
                   <Button onClick={handleCancelAddSavedList}>Huỷ</Button>
@@ -391,6 +467,7 @@ const Sidebar = ({
               placeholder={"Nhập tên từng bạn ở đây...\nMỗi dòng là 1 bạn."}
               rows={8}
               className="h-full"
+              disabled={!isAuthenticated}
             />
           </div>
 
@@ -399,6 +476,7 @@ const Sidebar = ({
               type="primary"
               block
               onClick={handleUpdate}
+              disabled={!isAuthenticated}
               style={{
                 fontWeight: 700,
                 fontSize: "1.05rem",
@@ -410,10 +488,11 @@ const Sidebar = ({
           </div>
         </div>
       ) : (
-        <div className="tab-content px-4">
+        <div className="tab-content flex-1 px-4">
           <div className="py-2">
             <Button
               block
+              disabled={!isAuthenticated}
               onClick={() =>
                 Modal.confirm({
                   title: "Xóa hết kết quả",
@@ -440,6 +519,25 @@ const Sidebar = ({
           </div>
         </div>
       )}
+
+      <div className="mt-auto border-t border-gray-200 bg-white px-4 py-3">
+        <div className="flex flex-col items-start gap-2">
+          {isAuthenticated ? (
+            <>
+              <div className="text-xs text-slate-600">
+                Đã đăng nhập: {currentUser?.email || "admin"}
+              </div>
+              <Button onClick={onLogout} danger>
+                Đăng xuất
+              </Button>
+            </>
+          ) : (
+            <Button type="primary" onClick={onLoginClick}>
+              Đăng nhập để chỉnh sửa
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

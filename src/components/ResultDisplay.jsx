@@ -14,6 +14,7 @@ const ResultDisplay = ({
   onItemDeleted,
   showResultsList = true,
   onResultsCountChange,
+  canManageResults = false,
 }) => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -41,7 +42,6 @@ const ResultDisplay = ({
   useEffect(() => {
     pageCacheRef.current = {};
     fetchResults(page, { force: true });
-    // refreshKey means the underlying list changed, so invalidate cached pages.
   }, [refreshKey]);
 
   useEffect(() => {
@@ -60,7 +60,6 @@ const ResultDisplay = ({
     shownResultKeyRef.current = latestResultKey;
     setShowModal(true);
 
-    // Fetch latest item status to check if it's still active
     const itemId = latestResult?.item?._id;
     if (itemId) {
       itemAPI
@@ -91,6 +90,24 @@ const ResultDisplay = ({
   }, [showModal, latestResult, pointerColor]);
 
   useEffect(() => {
+    if (!clapAudioRef.current) {
+      const audio = new Audio(clapAudio);
+      audio.preload = "auto";
+      audio.volume = 1;
+      audio.load();
+      clapAudioRef.current = audio;
+    }
+
+    return () => {
+      try {
+        clapAudioRef.current?.pause();
+      } catch {
+        // noop
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (fireworksTimerRef.current) {
         clearInterval(fireworksTimerRef.current);
@@ -107,10 +124,7 @@ const ResultDisplay = ({
     if (hasPlayedAudioRef.current) return;
 
     try {
-      if (!clapAudioRef.current) {
-        clapAudioRef.current = new Audio(clapAudio);
-        clapAudioRef.current.preload = "auto";
-      }
+      if (!clapAudioRef.current) return;
 
       clapAudioRef.current.currentTime = 0;
       clapAudioRef.current.play().catch((error) => {
@@ -129,7 +143,7 @@ const ResultDisplay = ({
       fireworksTimerRef.current = null;
     }
     setShowModal(false);
-    setItemIsActive(true); // Reset when modal closes
+    setItemIsActive(true);
   };
 
   const fetchResults = async (targetPage = page, options = {}) => {
@@ -140,7 +154,9 @@ const ResultDisplay = ({
       if (cachedPage) {
         setResults(cachedPage.results);
         setTotalPages(cachedPage.totalPages);
-        onResultsCountChange?.(cachedPage.totalRecords ?? cachedPage.results.length ?? 0);
+        onResultsCountChange?.(
+          cachedPage.totalRecords ?? cachedPage.results.length ?? 0,
+        );
         return;
       }
     }
@@ -150,7 +166,8 @@ const ResultDisplay = ({
       const response = await resultAPI.getResultsByPage(targetPage, 10);
       if (response.data.success) {
         const fetchedResults = response.data.data;
-        const totalRecords = response.data.pagination?.total_records ?? fetchedResults.length;
+        const totalRecords =
+          response.data.pagination?.total_records ?? fetchedResults.length;
         const totalPagesValue = response.data.pagination?.total_pages ?? 1;
         setResults(fetchedResults);
         setTotalPages(totalPagesValue);
@@ -168,35 +185,16 @@ const ResultDisplay = ({
     }
   };
 
-  const handleClearAll = () => {
-    Modal.confirm({
-      title: "Xác nhận xóa",
-      content: "Bạn có chắc muốn xóa toàn bộ kết quả quay?",
-      okText: "Xóa",
-      okType: "danger",
-      cancelText: "Hủy",
-      onOk: async () => {
-        try {
-          const response = await resultAPI.clearAllResults();
-          if (response.data.success) {
-            setResults([]);
-            pageCacheRef.current = {};
-            onResultsCountChange?.(0);
-            setPage(1);
-            onDataChanged?.();
-            notify({
-              type: "success",
-              message: "Xóa tất cả kết quả thành công",
-            });
-          }
-        } catch (error) {
-          notify({ type: "error", message: "Lỗi", description: error.message });
-        }
-      },
-    });
-  };
-
   const handleDeleteResult = async (id) => {
+    if (!canManageResults) {
+      notify({
+        type: "warning",
+        message: "Bạn cần đăng nhập",
+        description: "Đăng nhập để xóa kết quả quay.",
+      });
+      return;
+    }
+
     try {
       const response = await resultAPI.deleteResult(id);
       if (response.data.success) {
@@ -216,6 +214,15 @@ const ResultDisplay = ({
   };
 
   const handleModalDelete = async () => {
+    if (!canManageResults) {
+      notify({
+        type: "warning",
+        message: "Bạn cần đăng nhập",
+        description: "Đăng nhập để xóa mục trong kết quả.",
+      });
+      return;
+    }
+
     try {
       const id = latestResult?.item?._id || latestResult?.result?.itemId;
       if (!id) return;
@@ -229,131 +236,70 @@ const ResultDisplay = ({
     }
   };
 
+  const modalContent = (
+    <Modal
+      title={
+        <div className="text-center text-2xl text-black-600">
+          🎉 Xin chúc mừng bạn nhỏ may mắn nhất lớp mình hôm nay:
+        </div>
+      }
+      open={showModal && !!latestResult}
+      onCancel={dismissModal}
+      footer={null}
+      centered
+      className="result-pop-modal"
+      width={760}
+      maskStyle={{ backgroundColor: "rgba(15, 23, 42, 0.45)" }}
+    >
+      <div className="mb-4 text-center">
+        <div className="text-xl md:text-2xl text-slate-700 font-medium leading-snug">
+          <span className="font-bold text-emerald-700 text-4xl md:text-5xl inline-block">
+            "{latestResult?.item?.name || latestResult?.itemName}"
+          </span>
+        </div>
+      </div>
+
+      <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+        <div className="w-full sm:w-auto flex justify-center">
+          <Space>
+            {canManageResults && (
+              <Button
+                danger
+                onClick={handleModalDelete}
+                disabled={!itemIsActive}
+                type="primary"
+              >
+                Xóa ô này
+              </Button>
+            )}
+          </Space>
+        </div>
+        <div className="w-full sm:w-auto flex justify-center">
+          <Space>
+            <Button
+              onClick={dismissModal}
+              className="font-bold text-white w-full sm:w-auto"
+              style={{
+                backgroundColor: "#2563eb",
+                borderColor: "#2563eb",
+                fontWeight: 700,
+              }}
+            >
+              Tiếp tục quay
+            </Button>
+          </Space>
+        </div>
+      </div>
+    </Modal>
+  );
+
   return (
     <>
       {contextHolder}
-      <div
-        className={`rounded-xl border border-gray-300 bg-white p-4 ${showResultsList
-            ? ""
-            : "pointer-events-none bg-transparent border-0 p-0"
-          }`}
-      >
-        <Modal
-          title={
-            <div className="text-center text-2xl  text-black-600">
-              🎉 Xin chúc mừng bạn nhỏ may mắn nhất lớp mình hôm nay:
-            </div>
-          }
-          open={showModal && !!latestResult}
-          onCancel={dismissModal}
-          footer={null}
-          centered
-          className="result-pop-modal"
-          width={760}
-          maskStyle={{ backgroundColor: "rgba(15, 23, 42, 0.45)" }}
-        >
-          <style>{`
-            @keyframes popIn {
-              0% { transform: scale(0.7); opacity: 0; }
-              60% { transform: scale(1.03); opacity: 1; }
-              100% { transform: scale(1); opacity: 1; }
-            }
-            @keyframes buttonPop {
-              0% { transform: scale(0.75); opacity: 0; }
-              60% { transform: scale(1.08); opacity: 1; }
-              100% { transform: scale(1); opacity: 1; }
-            }
-            .result-pop-modal {
-              max-width: calc(100vw - 24px);
-            }
-            .result-pop-modal .ant-modal {
-              width: min(760px, calc(100vw - 24px)) !important;
-            }
-            .result-pop-modal .ant-modal-content {
-              animation: popIn 0.35s ease-out;
-              box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
-              border: 2px solid rgba(16, 185, 129, 0.12);
-              padding: 28px 30px 26px;
-              position: relative;
-              overflow: hidden;
-            }
-            .result-pop-modal .ant-modal-header::before {
-              content: "";
-              position: absolute;
-              left: 0;
-              top: 0;
-              height: 6px;
-              width: 100%;
-              background: var(--pointer-color, linear-gradient(90deg, #10b981, #34d399));
-              border-top-left-radius: 8px;
-              border-top-right-radius: 8px;
-            }
-            .result-pop-modal .ant-modal-content::after {
-              content: "";
-              position: absolute;
-              inset: 0;
-              pointer-events: none;
-              border-radius: 16px;
-              box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
-            }
-            .result-pop-modal .ant-modal-header {
-              margin-bottom: 20px;
-              border-bottom: 0;
-              padding-bottom: 0;
-            }
-            .result-pop-modal .ant-modal-title {
-              width: 100%;
-            }
-            .result-pop-modal .ant-modal-body {
-              padding: 0;
-            }
-          `}</style>
+      {showResultsList ? (
+        <div className="rounded-xl border border-gray-300 bg-white p-4">
+          {modalContent}
 
-          <div className="mb-4 text-center">
-            <div className="text-xl md:text-2xl text-slate-700 font-medium leading-snug">
-              <span className="font-bold text-emerald-700 text-4xl md:text-5xl inline-block">
-                "{latestResult?.item?.name || latestResult?.itemName}"
-              </span>
-            </div>
-          </div>
-
-          <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <div className="w-full sm:w-auto flex justify-center">
-              <Space>
-                <Button
-                  danger
-                  onClick={handleModalDelete}
-                  disabled={!itemIsActive}
-                  className="font-bold !bg--red600 !border-red-600 !text-white hover:!bg-red-700 hover:!border-red-700 !shadow-lg"
-                  type="primary"
-                  style={{ animation: "buttonPop 0.45s ease-out" }}
-                  title={
-                    !itemIsActive ? "Mục này đã bị vô hiệu hóa" : "Xóa mục này"
-                  }
-                >
-                  Xóa ô này
-                </Button>
-              </Space>
-            </div>
-            <div className="w-full sm:w-auto flex justify-center">
-              <Space>
-                <Button
-                  onClick={dismissModal}
-                  className="font-bold text-white w-full sm:w-auto"
-                  style={{
-                    backgroundColor: "#2563eb",
-                    borderColor: "#2563eb",
-                    fontWeight: 700,
-                  }}
-                >
-                  Tiếp tục quay
-                </Button>
-              </Space>
-            </div>
-          </div>
-        </Modal>
-
-        {showResultsList && (
           <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-purple-50">
             <div className="mb-4">
               <div className="flex items-center justify-between mb-3">
@@ -386,13 +332,15 @@ const ResultDisplay = ({
                           </div>
                         </div>
                       </div>
-                      <Button
-                        danger
-                        type="text"
-                        size="small"
-                        icon={<DeleteOutlined />}
-                        onClick={() => handleDeleteResult(result._id)}
-                      />
+                      {canManageResults && (
+                        <Button
+                          danger
+                          type="text"
+                          size="small"
+                          icon={<DeleteOutlined />}
+                          onClick={() => handleDeleteResult(result._id)}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -408,23 +356,16 @@ const ResultDisplay = ({
                       showSizeChanger={false}
                     />
                   </div>
-
-                  <Button
-                    danger
-                    onClick={handleClearAll}
-                    className="w-full max-w-sm"
-                    style={{ backgroundColor: "#ef4444", borderColor: "#dc2626", color: "#ffffff" }}
-                  >
-                    Xóa toàn bộ
-                  </Button>
                 </div>
               </>
             ) : (
               <Empty description="Chưa có lượt quay nào" className="py-8" />
             )}
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="pointer-events-none contents">{modalContent}</div>
+      )}
     </>
   );
 };

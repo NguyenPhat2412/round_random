@@ -4,12 +4,21 @@ import { UploadOutlined, InboxOutlined } from "@ant-design/icons";
 import { uploadAPI } from "../services/api";
 import useNotification from "../hooks/useNotification";
 
-const ImportExcel = ({ onImportSuccess }) => {
+const ImportExcel = ({ onImportSuccess, disabled = false }) => {
   const [loading, setLoading] = useState(false);
   const [fileList, setFileList] = useState([]);
   const { notify, contextHolder } = useNotification();
 
   const beforeUpload = (file) => {
+    if (disabled) {
+      notify({
+        type: "warning",
+        message: "Bạn cần đăng nhập",
+        description: "Đăng nhập để nhập danh sách từ file Excel.",
+      });
+      return false;
+    }
+
     const validTypes = [
       "application/vnd.ms-excel",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -65,9 +74,14 @@ const ImportExcel = ({ onImportSuccess }) => {
           beforeUpload={beforeUpload}
           customRequest={handleUpload}
           accept=".xls,.xlsx"
-          disabled={loading}
+          disabled={loading || disabled}
         >
-          <Button icon={<UploadOutlined />} block loading={loading}>
+          <Button
+            icon={<UploadOutlined />}
+            block
+            loading={loading}
+            disabled={disabled}
+          >
             {loading ? "Đang xử lý..." : "Chọn file"}
           </Button>
         </Upload>

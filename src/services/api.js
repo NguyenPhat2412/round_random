@@ -1,7 +1,7 @@
 import axios from "axios";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE_URL = `${baseUrl.replace(/\/$/, "")}/api`;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -9,6 +9,18 @@ const apiClient = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+// Add token to every request
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
 
 // Item API calls
 export const itemAPI = {
@@ -51,6 +63,11 @@ export const uploadAPI = {
 // User API calls
 export const userAPI = {
   login: (credentials) => apiClient.post("/users/login", credentials),
+};
+export const savedListAPI = {
+  getAllSavedLists: () => apiClient.get("/saved-lists"),
+  upsertSavedList: (payload) => apiClient.post("/saved-lists", payload),
+  deleteSavedList: (id) => apiClient.delete(`/saved-lists/${id}`),
 };
 
 export default apiClient;
