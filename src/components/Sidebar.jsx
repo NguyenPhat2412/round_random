@@ -330,7 +330,9 @@ const Sidebar = ({
   };
 
   return (
-    <div className="sidebar flex flex-col h-full max-h-screen overflow-hidden">      {contextHolder}
+    <div className="sidebar flex flex-col h-full max-h-screen overflow-hidden">
+      {" "}
+      {contextHolder}
       <div className="tabs">
         <div
           className={`tab ${activeTab === "items" ? "active" : ""}`}
@@ -345,7 +347,6 @@ const Sidebar = ({
           Kết quả <span className="badge">{resultsCount}</span>
         </div>
       </div>
-
       {showResultDisplay && (
         <ResultDisplay
           latestResult={latestResult}
@@ -359,31 +360,31 @@ const Sidebar = ({
           onResultShown={onResultShown}
         />
       )}
-
       {activeTab === "items" ? (
-        <div className="tab-content flex-1 overflow-y-auto pb-6">          <div className="toolbar">
-          <Space wrap>
-            <Button onClick={shuffleList} disabled={!isAuthenticated}>
-              🔀 Trộn
-            </Button>
-            <Button onClick={sortAZ} disabled={!isAuthenticated}>
-              🔤 A đến Z
-            </Button>
-            <Button
-              onClick={handleOpenSavedLists}
-              disabled={!isAuthenticated}
-              style={{
-                backgroundColor: "#8bc34a",
-                borderColor: "#8bc34a",
-                color: "#fff",
-              }}
-            >
-              🔄 Danh sách đã lưu
-            </Button>
-          </Space>
-        </div>
+        <div className="tab-content flex-1 overflow-y-auto pb-6">
+          <div className="toolbar justify-center">
+            <Space wrap className="justify-center">
+              <Button onClick={shuffleList} disabled={!isAuthenticated}>
+                🔀 Trộn
+              </Button>
+              <Button onClick={sortAZ} disabled={!isAuthenticated}>
+                🔤 A đến Z
+              </Button>
+              <Button
+                onClick={handleOpenSavedLists}
+                disabled={!isAuthenticated}
+                style={{
+                  backgroundColor: "#8bc34a",
+                  borderColor: "#8bc34a",
+                  color: "#fff",
+                }}
+              >
+                🔄 Danh sách đã lưu
+              </Button>
+            </Space>
+          </div>
 
-          <div className="px-4 py-2">
+          <div className="px-4 py-2 flex justify-center">
             <ImportExcel
               onImportSuccess={onImportSuccess}
               disabled={!isAuthenticated}
@@ -520,7 +521,6 @@ const Sidebar = ({
           </div>
         </div>
       )}
-
       <div className="shrink-0 z-10 border-t border-gray-200 bg-white px-4 py-4">
         <div className="flex flex-col items-center gap-2 text-center">
           {isAuthenticated ? (
@@ -531,7 +531,11 @@ const Sidebar = ({
               <Button
                 onClick={onLogout}
                 className="bg-gray-200 hover:bg-gray-300 text-black font-bold border-gray-300"
-                style={{ borderColor: '#d1d5db', color: 'black', fontWeight: 'bold' }}
+                style={{
+                  borderColor: "#d1d5db",
+                  color: "black",
+                  fontWeight: "bold",
+                }}
               >
                 Đăng xuất
               </Button>
@@ -540,7 +544,7 @@ const Sidebar = ({
             <Button
               type="primary"
               onClick={onLoginClick}
-              style={{ fontWeight: 'bold' }}
+              style={{ fontWeight: "bold" }}
             >
               Đăng nhập để chỉnh sửa
             </Button>

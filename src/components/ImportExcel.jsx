@@ -62,7 +62,7 @@ const ImportExcel = ({ onImportSuccess, disabled = false }) => {
   return (
     <>
       {contextHolder}
-      <div className="rounded-lg border border-gray-300 bg-white p-4">
+      <div className="mx-auto w-full max-w-sm rounded-lg border border-gray-300 bg-white p-4">
         <h3 className="font-semibold text-slate-800 mb-2">Nhập danh sách</h3>
         <p className="text-xs text-slate-600 mb-3">
           Tải file Excel có danh sách các bạn, mỗi dòng là một tên.
