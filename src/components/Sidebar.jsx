@@ -526,7 +526,7 @@ const Sidebar = ({
         <div className="flex flex-col items-center gap-2 text-center">
           {isAuthenticated ? (
             <>
-              <div className="text-sm font-semibold text-blue-600">
+              <div className="text-xl font-semibold bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent">
                 Xin chào Kim Tuyến!
               </div>
               <Button
