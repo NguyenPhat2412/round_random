@@ -363,12 +363,14 @@ const Sidebar = ({
       {activeTab === "items" ? (
         <div className="tab-content flex-1 overflow-y-auto pb-6">
           <div className="toolbar flex-col items-stretch">
-            <Button block onClick={shuffleList} disabled={!isAuthenticated}>
-              🔀 Trộn
-            </Button>
-            <Button block onClick={sortAZ} disabled={!isAuthenticated}>
-              🔤 A đến Z
-            </Button>
+            <div className="flex gap-2 mb-2">
+              <Button block onClick={shuffleList} disabled={!isAuthenticated}>
+                🔀 Trộn
+              </Button>
+              <Button block onClick={sortAZ} disabled={!isAuthenticated}>
+                🔤 A đến Z
+              </Button>
+            </div>
             <Button
               block
               onClick={handleOpenSavedLists}
