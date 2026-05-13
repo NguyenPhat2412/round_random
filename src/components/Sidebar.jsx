@@ -362,29 +362,28 @@ const Sidebar = ({
       )}
       {activeTab === "items" ? (
         <div className="tab-content flex-1 overflow-y-auto pb-6">
-          <div className="toolbar justify-center">
-            <Space wrap className="justify-center">
-              <Button onClick={shuffleList} disabled={!isAuthenticated}>
-                🔀 Trộn
-              </Button>
-              <Button onClick={sortAZ} disabled={!isAuthenticated}>
-                🔤 A đến Z
-              </Button>
-              <Button
-                onClick={handleOpenSavedLists}
-                disabled={!isAuthenticated}
-                style={{
-                  backgroundColor: "#8bc34a",
-                  borderColor: "#8bc34a",
-                  color: "#fff",
-                }}
-              >
-                🔄 Danh sách đã lưu
-              </Button>
-            </Space>
+          <div className="toolbar flex-col items-stretch">
+            <Button block onClick={shuffleList} disabled={!isAuthenticated}>
+              🔀 Trộn
+            </Button>
+            <Button block onClick={sortAZ} disabled={!isAuthenticated}>
+              🔤 A đến Z
+            </Button>
+            <Button
+              block
+              onClick={handleOpenSavedLists}
+              disabled={!isAuthenticated}
+              style={{
+                backgroundColor: "#8bc34a",
+                borderColor: "#8bc34a",
+                color: "#fff",
+              }}
+            >
+              🔄 Danh sách đã lưu
+            </Button>
           </div>
 
-          <div className="px-4 py-2 flex justify-center">
+          <div className="px-4 py-2">
             <ImportExcel
               onImportSuccess={onImportSuccess}
               disabled={!isAuthenticated}
