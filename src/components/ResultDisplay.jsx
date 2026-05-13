@@ -7,6 +7,8 @@ import { triggerFireworks } from "../utils/confetti";
 import { ColorContext } from "../contexts/ColorContext";
 import clapAudio from "../../audio/clap.mp3";
 
+const RESULT_PAGE_SIZE = 5;
+
 const ResultDisplay = ({
   latestResult,
   refreshKey,
@@ -15,6 +17,8 @@ const ResultDisplay = ({
   showResultsList = true,
   onResultsCountChange,
   canManageResults = false,
+  displayedResultKey,
+  onResultShown,
 }) => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -56,8 +60,13 @@ const ResultDisplay = ({
   useEffect(() => {
     if (!latestResultKey) return;
     if (shownResultKeyRef.current === latestResultKey) return;
+    if (displayedResultKey === latestResultKey) {
+      shownResultKeyRef.current = latestResultKey;
+      return;
+    }
 
     shownResultKeyRef.current = latestResultKey;
+    onResultShown?.(latestResultKey);
     setShowModal(true);
 
     const itemId = latestResult?.item?._id;
@@ -71,7 +80,7 @@ const ResultDisplay = ({
         })
         .catch((err) => console.error("Error fetching item status:", err));
     }
-  }, [latestResultKey, latestResult]);
+  }, [latestResultKey, latestResult, displayedResultKey, onResultShown]);
 
   useEffect(() => {
     if (!showModal || !latestResult) {
@@ -163,7 +172,10 @@ const ResultDisplay = ({
 
     try {
       setLoading(true);
-      const response = await resultAPI.getResultsByPage(targetPage, 10);
+      const response = await resultAPI.getResultsByPage(
+        targetPage,
+        RESULT_PAGE_SIZE,
+      );
       if (response.data.success) {
         const fetchedResults = response.data.data;
         const totalRecords =
@@ -324,7 +336,7 @@ const ResultDisplay = ({
                     >
                       <div className="flex items-center gap-3 flex-1">
                         <span className="px-3 py-1 text-sm font-normal bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full min-w-12 text-center">
-                          #{(page - 1) * 10 + idx + 1}
+                          #{(page - 1) * RESULT_PAGE_SIZE + idx + 1}
                         </span>
                         <div className="flex-1">
                           <div className="font-normal text-slate-800 text-base">
@@ -349,8 +361,8 @@ const ResultDisplay = ({
                   <div className="w-full flex justify-center">
                     <Pagination
                       current={page}
-                      total={Math.max(1, totalPages) * 10}
-                      pageSize={10}
+                      total={Math.max(1, totalPages) * RESULT_PAGE_SIZE}
+                      pageSize={RESULT_PAGE_SIZE}
                       onChange={(newPage) => setPage(newPage)}
                       size="small"
                       showSizeChanger={false}

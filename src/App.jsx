@@ -18,6 +18,7 @@ function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [quickAdd, setQuickAdd] = useState({ name: "" });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [displayedResultKey, setDisplayedResultKey] = useState(null);
   const [authUser, setAuthUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("user") || "null");
@@ -125,6 +126,10 @@ function App() {
     setIsSpinning(false);
     setLatestResult(result);
     triggerRefresh();
+  };
+
+  const handleResultShown = (resultKey) => {
+    setDisplayedResultKey(resultKey);
   };
 
   const handleImportSuccess = (importedItems) => {
@@ -242,6 +247,8 @@ function App() {
                       onItemDeleted={handleItemDeleted}
                       showResultsList={false}
                       canManageResults={isAuthenticated}
+                      displayedResultKey={displayedResultKey}
+                      onResultShown={handleResultShown}
                     />
                   </div>
                 </div>
@@ -267,6 +274,8 @@ function App() {
                       currentUser={authUser}
                       onLoginClick={handleLoginClick}
                       onLogout={handleLogout}
+                      displayedResultKey={displayedResultKey}
+                      onResultShown={handleResultShown}
                     />
                   </div>
                 )}

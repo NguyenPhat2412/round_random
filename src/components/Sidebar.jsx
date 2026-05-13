@@ -20,6 +20,8 @@ const Sidebar = ({
   currentUser = null,
   onLoginClick,
   onLogout,
+  displayedResultKey,
+  onResultShown,
 }) => {
   const [activeTab, setActiveTab] = useState("items");
   const [resultsCount, setResultsCount] = useState(0);
@@ -354,6 +356,8 @@ const Sidebar = ({
           showResultsList={activeTab === "results"}
           onResultsCountChange={setResultsCount}
           canManageResults={isAuthenticated}
+          displayedResultKey={displayedResultKey}
+          onResultShown={onResultShown}
         />
       )}
 
