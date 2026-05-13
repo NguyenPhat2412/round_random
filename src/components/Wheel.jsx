@@ -116,13 +116,17 @@ const Wheel = ({
     ctx.stroke();
 
     const dotCount = 30;
+
+    // 1. Lấy độ dày của viền vàng (giống với công thức ở innerRadius)
+    const rimWidth = Math.max(12, cssSize * 0.045);
+    // 2. Tính bán kính đặt chấm tròn sao cho nằm ngay chính giữa viền
+    const dotRadius = outerRadius - (rimWidth / 2);
+
     for (let i = 0; i < dotCount; i++) {
       const angle = (i * 2 * Math.PI) / dotCount;
-      const dotX =
-        Math.cos(angle) * (outerRadius - Math.max(6, cssSize * 0.015));
-      const dotY =
-        Math.sin(angle) * (outerRadius - Math.max(6, cssSize * 0.015));
-
+      // 3. Truyền dotRadius vào thay cho công thức cũ
+      const dotX = Math.cos(angle) * dotRadius;
+      const dotY = Math.sin(angle) * dotRadius;
       ctx.beginPath();
       ctx.arc(dotX, dotY, Math.max(2, cssSize * 0.008), 0, 2 * Math.PI);
       ctx.fillStyle = "#ffeb3b";
@@ -160,13 +164,13 @@ const Wheel = ({
 
       const label = (items[i].name || "").slice(0, 25);
       const maxWidth = innerRadius - 40;
-      let fontSize = Math.max(10, Math.floor(cssSize * 0.036));
-      ctx.font = `normal ${fontSize}px Roboto, sans-serif`;
+      let fontSize = Math.max(10, Math.floor(cssSize * 0.030));
+      ctx.font = `500 ${fontSize}px Roboto, sans-serif`;
       let textWidth = ctx.measureText(label).width;
 
-      while (textWidth > maxWidth && fontSize > 8) {
+      while (textWidth > maxWidth && fontSize > 6) {
         fontSize -= 1;
-        ctx.font = `normal ${fontSize}px Roboto, sans-serif`;
+        ctx.font = `500 ${fontSize}px Roboto, sans-serif`;
         textWidth = ctx.measureText(label).width;
       }
 
@@ -284,7 +288,7 @@ const Wheel = ({
       player.volume = 0.25;
       const playPromise = player.play();
       if (playPromise) {
-        playPromise.catch(() => {});
+        playPromise.catch(() => { });
       }
     } catch (e) {
       console.warn("Audio playback failed:", e);
@@ -392,8 +396,8 @@ const Wheel = ({
         style={
           !isFullscreen
             ? {
-                backgroundImage: `conic-gradient(from 90deg, rgb(223, 48, 0) 0deg, rgb(223, 48, 0) 27.692deg, rgb(254, 96, 0) 27.692deg, rgb(254, 96, 0) 55.385deg, rgb(255, 145, 37) 55.385deg, rgb(255, 145, 37) 83.077deg, rgb(251, 187, 95) 83.077deg, rgb(251, 187, 95) 110.769deg, rgb(218, 217, 154) 110.769deg, rgb(218, 217, 154) 138.462deg, rgb(169, 230, 202) 138.462deg, rgb(169, 230, 202) 166.154deg, rgb(114, 224, 232) 166.154deg, rgb(114, 224, 232) 193.846deg, rgb(62, 201, 236) 193.846deg, rgb(62, 201, 236) 221.538deg, rgb(20, 163, 214) 221.538deg, rgb(20, 163, 214) 249.231deg, rgb(0, 116, 171) 249.231deg, rgb(0, 116, 171) 276.923deg, rgb(0, 67, 115) 276.923deg, rgb(0, 67, 115) 304.615deg, rgb(18, 22, 55) 304.615deg, rgb(18, 22, 55) 332.308deg, rgb(58, 0, 5) 332.308deg, rgb(58, 0, 5) 360deg)`,
-              }
+              backgroundImage: `conic-gradient(from 90deg, rgb(223, 48, 0) 0deg, rgb(223, 48, 0) 27.692deg, rgb(254, 96, 0) 27.692deg, rgb(254, 96, 0) 55.385deg, rgb(255, 145, 37) 55.385deg, rgb(255, 145, 37) 83.077deg, rgb(251, 187, 95) 83.077deg, rgb(251, 187, 95) 110.769deg, rgb(218, 217, 154) 110.769deg, rgb(218, 217, 154) 138.462deg, rgb(169, 230, 202) 138.462deg, rgb(169, 230, 202) 166.154deg, rgb(114, 224, 232) 166.154deg, rgb(114, 224, 232) 193.846deg, rgb(62, 201, 236) 193.846deg, rgb(62, 201, 236) 221.538deg, rgb(20, 163, 214) 221.538deg, rgb(20, 163, 214) 249.231deg, rgb(0, 116, 171) 249.231deg, rgb(0, 116, 171) 276.923deg, rgb(0, 67, 115) 276.923deg, rgb(0, 67, 115) 304.615deg, rgb(18, 22, 55) 304.615deg, rgb(18, 22, 55) 332.308deg, rgb(58, 0, 5) 332.308deg, rgb(58, 0, 5) 360deg)`,
+            }
             : {}
         }
       >
@@ -435,7 +439,7 @@ const Wheel = ({
                 }}
               />
             </div>
-            <div className="w-full h-full rounded-full overflow-hidden wheel-outer-shadow shadow-2xl">
+            <div className="w-full h-full rounded-full overflow-hidden wheel-outer-shadow shadow-[0_0_40px_0.5px_rgba(0,0,0,0.7)]">
               <canvas
                 ref={canvasRef}
                 className="w-full h-full rounded-full wheel-canvas"
@@ -445,11 +449,10 @@ const Wheel = ({
             <button
               onClick={handleSpin}
               disabled={localSpinning || items.length === 0}
-              className={`absolute top-1/2 left-1/2 w-28 h-28 md:w-32 md:h-32 -translate-x-1/2 -translate-y-1/2 rounded-full border-[5px] border-white font-bold text-2xl md:text-3xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${
-                localSpinning || items.length === 0
-                  ? "cursor-not-allowed"
-                  : "hover:bg-red-600 active:scale-95 "
-              }`}
+              className={`absolute top-1/2 left-1/2 w-24 h-24 md:w-28 md:h-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-[8px] border-white font-bold text-2xl md:text-2xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${localSpinning || items.length === 0
+                ? "cursor-not-allowed"
+                : "hover:bg-red-600 active:scale-95 "
+                }`}
               style={{
                 backgroundColor:
                   items.length === 0 ? "#9ca3af" : "var(--pointer-color)",

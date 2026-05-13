@@ -349,8 +349,8 @@ const ResultDisplay = ({
                   <div className="w-full flex justify-center">
                     <Pagination
                       current={page}
-                      total={Math.max(1, totalPages) * 10}
-                      pageSize={10}
+                      total={Math.max(1, totalPages) * 5}
+                      pageSize={5}
                       onChange={(newPage) => setPage(newPage)}
                       size="small"
                       showSizeChanger={false}
