@@ -102,7 +102,11 @@ const ResultDisplay = ({
     if (!clapAudioRef.current) {
       const audio = new Audio(clapAudio);
       audio.preload = "auto";
-      audio.volume = 1;
+
+      // ĐÃ SỬA: Giảm âm lượng tiếng vỗ tay xuống 40% (0.4) 
+      // Nếu bạn thấy vẫn to có thể giảm xuống 0.2, hoặc nhỏ quá thì tăng lên 0.6
+      audio.volume = 0.4;
+
       audio.load();
       clapAudioRef.current = audio;
     }
@@ -127,6 +131,12 @@ const ResultDisplay = ({
   useEffect(() => {
     if (!showModal) {
       hasPlayedAudioRef.current = false;
+
+      // ĐÃ SỬA: Đảm bảo khi Modal bị ẩn, tiếng vỗ tay sẽ bị tắt ngay lập tức
+      if (clapAudioRef.current) {
+        clapAudioRef.current.pause();
+        clapAudioRef.current.currentTime = 0;
+      }
       return;
     }
 
@@ -151,6 +161,13 @@ const ResultDisplay = ({
       clearInterval(fireworksTimerRef.current);
       fireworksTimerRef.current = null;
     }
+
+    // ĐÃ SỬA: Khi người dùng chủ động bấm "Tiếp tục quay" hoặc bấm dấu X, ép dừng nhạc ngay
+    if (clapAudioRef.current) {
+      clapAudioRef.current.pause();
+      clapAudioRef.current.currentTime = 0;
+    }
+
     setShowModal(false);
     setItemIsActive(true);
   };

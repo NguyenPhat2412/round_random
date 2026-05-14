@@ -12,8 +12,9 @@ import useNotification from "../hooks/useNotification";
 import ConstellationBackground from "./ConstellationBackground";
 import spinAudio from "../../audio/audio.mp3";
 
-const FULL_ROTATIONS = 12;
-const SPIN_DURATION = 15000;
+// THIẾT LẬP CHUẨN CHO AUDIO 15 GIÂY:
+const FULL_ROTATIONS = 10; // 10 vòng trải đều trong 15s là mượt nhất
+const SPIN_DURATION = 15000; // Giữ nguyên 15s khớp với nhạc
 const AUTO_SPIN_SPEED = 0.0015;
 
 const FIXED_COLORS = [
@@ -36,7 +37,7 @@ const FIXED_COLORS = [
 ];
 
 const Wheel = ({
-  items,
+  items = [],
   isSpinning,
   onSpinStateChange,
   onSpinComplete,
@@ -118,14 +119,11 @@ const Wheel = ({
 
     const dotCount = 30;
 
-    // 1. Lấy độ dày của viền vàng (giống với công thức ở innerRadius)
     const rimWidth = Math.max(12, cssSize * 0.045);
-    // 2. Tính bán kính đặt chấm tròn sao cho nằm ngay chính giữa viền
     const dotRadius = outerRadius - rimWidth / 2;
 
     for (let i = 0; i < dotCount; i++) {
       const angle = (i * 2 * Math.PI) / dotCount;
-      // 3. Truyền dotRadius vào thay cho công thức cũ
       const dotX = Math.cos(angle) * dotRadius;
       const dotY = Math.sin(angle) * dotRadius;
       ctx.beginPath();
@@ -242,7 +240,6 @@ const Wheel = ({
   }, [localSpinning, items.length]);
 
   useEffect(() => {
-    // Preload multiple players so first spin and repeated spins play instantly.
     const players = Array.from({ length: 2 }, () => {
       const audio = new Audio(spinAudio);
       audio.preload = "auto";
@@ -278,7 +275,7 @@ const Wheel = ({
       player.volume = 0.25;
       const playPromise = player.play();
       if (playPromise) {
-        playPromise.catch(() => {});
+        playPromise.catch(() => { });
       }
     } catch (e) {
       console.warn("Audio playback failed:", e);
@@ -295,10 +292,6 @@ const Wheel = ({
       console.warn("Audio stop failed:", e);
     }
   }, []);
-
-  const easeInOutQuart = (t) => {
-    return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
-  };
 
   const calculateTargetRotation = useCallback(
     (selectedIndex) => {
@@ -351,7 +344,10 @@ const Wheel = ({
 
           if (progress > 1) progress = 1;
 
-          const eased = easeInOutQuart(progress);
+          // CÔNG THỨC MỚI DÀNH RIÊNG CHO 15 GIÂY (EaseOutQuad - mũ 2)
+          // Giúp vòng quay bắt đầu mượt, không giật cục, ma sát giảm đều từ đầu đến cuối
+          const eased = 1 - Math.pow(1 - progress, 2);
+
           const newRotation = startRotation + spinAngle * eased;
 
           setCurrentRotation(newRotation);
@@ -398,8 +394,8 @@ const Wheel = ({
         style={
           !isFullscreen
             ? {
-                backgroundImage: `conic-gradient(from 90deg, rgb(223, 48, 0) 0deg, rgb(223, 48, 0) 27.692deg, rgb(254, 96, 0) 27.692deg, rgb(254, 96, 0) 55.385deg, rgb(255, 145, 37) 55.385deg, rgb(255, 145, 37) 83.077deg, rgb(251, 187, 95) 83.077deg, rgb(251, 187, 95) 110.769deg, rgb(218, 217, 154) 110.769deg, rgb(218, 217, 154) 138.462deg, rgb(169, 230, 202) 138.462deg, rgb(169, 230, 202) 166.154deg, rgb(114, 224, 232) 166.154deg, rgb(114, 224, 232) 193.846deg, rgb(62, 201, 236) 193.846deg, rgb(62, 201, 236) 221.538deg, rgb(20, 163, 214) 221.538deg, rgb(20, 163, 214) 249.231deg, rgb(0, 116, 171) 249.231deg, rgb(0, 116, 171) 276.923deg, rgb(0, 67, 115) 276.923deg, rgb(0, 67, 115) 304.615deg, rgb(18, 22, 55) 304.615deg, rgb(18, 22, 55) 332.308deg, rgb(58, 0, 5) 332.308deg, rgb(58, 0, 5) 360deg)`,
-              }
+              backgroundImage: `conic-gradient(from 90deg, rgb(223, 48, 0) 0deg, rgb(223, 48, 0) 27.692deg, rgb(254, 96, 0) 27.692deg, rgb(254, 96, 0) 55.385deg, rgb(255, 145, 37) 55.385deg, rgb(255, 145, 37) 83.077deg, rgb(251, 187, 95) 83.077deg, rgb(251, 187, 95) 110.769deg, rgb(218, 217, 154) 110.769deg, rgb(218, 217, 154) 138.462deg, rgb(169, 230, 202) 138.462deg, rgb(169, 230, 202) 166.154deg, rgb(114, 224, 232) 166.154deg, rgb(114, 224, 232) 193.846deg, rgb(62, 201, 236) 193.846deg, rgb(62, 201, 236) 221.538deg, rgb(20, 163, 214) 221.538deg, rgb(20, 163, 214) 249.231deg, rgb(0, 116, 171) 249.231deg, rgb(0, 116, 171) 276.923deg, rgb(0, 67, 115) 276.923deg, rgb(0, 67, 115) 304.615deg, rgb(18, 22, 55) 304.615deg, rgb(18, 22, 55) 332.308deg, rgb(58, 0, 5) 332.308deg, rgb(58, 0, 5) 360deg)`,
+            }
             : {}
         }
       >
@@ -451,11 +447,10 @@ const Wheel = ({
             <button
               onClick={handleSpin}
               disabled={localSpinning || items.length === 0}
-              className={`absolute top-1/2 left-1/2 w-24 h-24 md:w-28 md:h-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-[8px] border-white font-bold text-2xl md:text-2xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${
-                localSpinning || items.length === 0
-                  ? "cursor-not-allowed"
-                  : "hover:bg-red-600 active:scale-95 "
-              }`}
+              className={`absolute top-1/2 left-1/2 w-24 h-24 md:w-28 md:h-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-[8px] border-white font-bold text-2xl md:text-2xl text-white z-20 flex items-center justify-center shadow-xl transition-all ${localSpinning || items.length === 0
+                  ? "cursor-not-allowed opacity-80"
+                  : "hover:brightness-110 active:scale-95 cursor-pointer"
+                }`}
               style={{
                 backgroundColor:
                   items.length === 0 ? "#9ca3af" : "var(--pointer-color)",
