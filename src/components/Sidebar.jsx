@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useContext } from "react";
 import ImportExcel from "./ImportExcel";
 import ResultDisplay from "./ResultDisplay";
+import WinRateSettings from "./WinRateSettings";
 import { generateDistinctColors } from "../utils/colorUtils";
 import { Button, Modal, Input, Space } from "antd";
 import useNotification from "../hooks/useNotification";
@@ -162,6 +163,7 @@ const Sidebar = ({
           color: i.color,
           icon: i.icon || "🎁",
           isActive: i.isActive !== false,
+          winRates: i.winRates,
         })),
       );
 
@@ -370,6 +372,9 @@ const Sidebar = ({
               <Button block onClick={sortAZ} disabled={!isAuthenticated}>
                 🔤 A đến Z
               </Button>
+              {isAuthenticated && (
+                <WinRateSettings items={items} onSaved={onManualUpdate} />
+              )}
             </div>
             <Button
               block
